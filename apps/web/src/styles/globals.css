@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for TempoTrackers */
+.map-container {
+  height: 100vh;
+  width: 100%;
+}
+
+.air-quality-indicator {
+  @apply rounded-full w-4 h-4;
+}
+
+.good { @apply bg-green-500; }
+.moderate { @apply bg-yellow-500; }
+.unhealthy-sensitive { @apply bg-orange-500; }
+.unhealthy { @apply bg-red-500; }
+.very-unhealthy { @apply bg-purple-500; }
+.hazardous { @apply bg-red-800; }
