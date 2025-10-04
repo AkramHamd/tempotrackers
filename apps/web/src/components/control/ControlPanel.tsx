@@ -462,24 +462,6 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
               <h3 className="text-lg font-semibold text-gray-900">Analytics</h3>
               
               <div className="space-y-3">
-                <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg p-4">
-                  <h4 className="font-medium text-gray-900 mb-2">Data Coverage</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Total Stations:</span>
-                      <span className="font-medium">{airQualityData?.length || 0}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">TEMPO Points:</span>
-                      <span className="font-medium">{airQualityData?.filter(d => d.source === 'TEMPO').length || 0}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Ground Stations:</span>
-                      <span className="font-medium">{airQualityData?.filter(d => d.source === 'Ground Station').length || 0}</span>
-                    </div>
-                  </div>
-                </div>
-
                 <div className="bg-gradient-to-r from-green-50 to-teal-50 rounded-lg p-4">
                   <h4 className="font-medium text-gray-900 mb-2">Data Quality</h4>
                   <div className="space-y-2 text-sm">
@@ -490,10 +472,6 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
                     <div className="flex justify-between">
                       <span className="text-gray-600">Accuracy:</span>
                       <span className="font-medium text-green-600">95.2%</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Last Update:</span>
-                      <span className="font-medium">{new Date().toLocaleTimeString()}</span>
                     </div>
                   </div>
                 </div>

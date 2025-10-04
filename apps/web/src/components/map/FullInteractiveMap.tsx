@@ -144,18 +144,10 @@ export default function FullInteractiveMap() {
           <div style="padding: 8px;">
             <h3 style="font-weight: bold; color: #1e40af; margin: 0 0 4px 0;">NASA Headquarters</h3>
             <p style="font-size: 12px; color: #666; margin: 0 0 8px 0;">Washington D.C.</p>
-            <p style="font-size: 12px; color: #333; margin: 0 0 8px 0;">
+            <p style="font-size: 12px; color: #333; margin: 0;">
               The headquarters of the National Aeronautics and Space Administration, 
               where the TEMPO mission is managed and coordinated.
             </p>
-            <div style="border-top: 1px solid #eee; padding-top: 8px;">
-              <p style="font-size: 11px; color: #666; margin: 0;">
-                <strong>Current AQI:</strong> ${nasaData ? `${nasaData.aqi} (${nasaData.quality})` : 'Loading...'}<br/>
-                <strong>PM2.5:</strong> ${nasaData ? `${nasaData.pollutants.pm25} μg/m³` : 'Loading...'}<br/>
-                <strong>Source:</strong> ${nasaData ? nasaData.source : 'Loading...'}<br/>
-                <strong>Last Updated:</strong> ${nasaData ? nasaData.timestamp.toLocaleTimeString() : 'Loading...'}
-              </p>
-            </div>
           </div>
         `)
 
@@ -433,25 +425,6 @@ export default function FullInteractiveMap() {
       {/* City Search Component */}
       <CitySearch onCitySelect={handleCitySelect} />
 
-      {/* Map Info Panel - Hidden when control panel is open */}
-      {!isControlPanelOpen && (
-        <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 max-w-xs transition-all duration-300">
-          <div className="flex items-center space-x-2 mb-2">
-            <div className="w-6 h-6 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xs">T</span>
-            </div>
-            <h3 className="font-semibold text-gray-900 text-sm">TempoTrackers</h3>
-          </div>
-          <p className="text-xs text-gray-600">
-            Interactive air quality monitoring around NASA Headquarters
-          </p>
-          <div className="mt-2 text-xs text-gray-500">
-            <div>Stations: {airQualityData?.length || 0}</div>
-            <div>Last Update: {airQualityData?.[0]?.timestamp.toLocaleTimeString() || 'Loading...'}</div>
-          </div>
-        </div>
-      )}
-
       {/* Navigation Header - Hidden when control panel is open */}
       {!isControlPanelOpen && (
         <div className="absolute top-4 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 transition-all duration-300">
@@ -490,8 +463,8 @@ export default function FullInteractiveMap() {
         </div>
       </div>
 
-      {/* Data Layer Controls */}
-      <div className="absolute bottom-16 right-4 z-[1000] bg-white rounded-lg shadow-lg p-2">
+      {/* Data Layer Controls - Movido más arriba */}
+      <div className="absolute bottom-32 right-4 z-[1000] bg-white rounded-lg shadow-lg p-2">
         <div className="mb-2 px-2 text-xs font-medium text-gray-600">Data Layers</div>
         <div className="flex flex-col space-y-1">
           <button
@@ -502,7 +475,7 @@ export default function FullInteractiveMap() {
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
           >
-            AQI
+            Air Quality
           </button>
           <button
             onClick={() => updateDataLayer('pm25')}
@@ -532,7 +505,7 @@ export default function FullInteractiveMap() {
                 : 'text-gray-700 hover:bg-gray-100'
             }`}
           >
-            Ozono
+            Ozone
           </button>
           <button
             onClick={() => updateDataLayer('no2')}
@@ -609,7 +582,7 @@ export default function FullInteractiveMap() {
           {currentDataLayer === 'aqi' ? 'Air Quality Index Legend' : 
            currentDataLayer === 'pm25' ? 'PM2.5 Legend (μg/m³)' :
            currentDataLayer === 'pm10' ? 'PM10 Legend (μg/m³)' :
-           currentDataLayer === 'o3' ? 'Ozono Legend (ppb)' :
+           currentDataLayer === 'o3' ? 'Ozone Legend (ppb)' :
            currentDataLayer === 'no2' ? 'NO₂ Legend (ppb)' :
            currentDataLayer === 'co' ? 'CO Legend (ppm)' :
            currentDataLayer === 'so2' ? 'SO₂ Legend (ppb)' : 'Legend'}

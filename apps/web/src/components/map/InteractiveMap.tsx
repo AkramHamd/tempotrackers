@@ -163,13 +163,6 @@ const InteractiveMap = () => {
                 The headquarters of the National Aeronautics and Space Administration, 
                 where the TEMPO mission is managed and coordinated.
               </p>
-              <div className="mt-3 pt-2 border-t border-gray-200">
-                <p className="text-xs text-gray-500">
-                  <strong>Current Air Quality:</strong> 45 (Good)<br/>
-                  <strong>PM2.5:</strong> 12 μg/m³<br/>
-                  <strong>Last Updated:</strong> {new Date().toLocaleTimeString()}
-                </p>
-              </div>
             </div>
           </Popup>
         </Marker>
@@ -184,9 +177,6 @@ const InteractiveMap = () => {
       {/* Map Info Panel */}
       <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-4 max-w-sm">
         <h3 className="font-semibold text-gray-900 mb-2">TempoTrackers Map</h3>
-        <p className="text-sm text-gray-600 mb-3">
-          Interactive air quality monitoring centered on NASA Headquarters in Washington D.C.
-        </p>
         <div className="space-y-2">
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 rounded-full bg-blue-600"></div>
