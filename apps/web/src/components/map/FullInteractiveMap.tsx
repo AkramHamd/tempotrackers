@@ -14,6 +14,7 @@ export default function FullInteractiveMap() {
   const [map, setMap] = useState<any>(null)
   const [currentLayer, setCurrentLayer] = useState('satellite')
   const [isControlPanelOpen, setIsControlPanelOpen] = useState(false)
+  const [mapKey, setMapKey] = useState(0)
   const { data: airQualityData, loading, error } = useAirQualityData()
   const getAQIColor = useAQIColor()
 
@@ -21,60 +22,65 @@ export default function FullInteractiveMap() {
     setIsClient(true)
   }, [])
 
-  // Handle map resize when control panel opens/closes
-  useEffect(() => {
-    if (!isClient || !map) return
-
-    // Small delay to ensure DOM has updated
-    const timer = setTimeout(() => {
-      const mapInstance = (window as any).mapInstance
-      if (mapInstance && typeof mapInstance.invalidateSize === 'function') {
-        try {
-          // Force map to recalculate size and reload tiles
-          mapInstance.invalidateSize()
-          
-          // Force tile layer refresh by temporarily changing zoom
-          const currentZoom = mapInstance.getZoom()
-          mapInstance.setZoom(currentZoom + 0.01)
-          setTimeout(() => {
-            mapInstance.setZoom(currentZoom)
-          }, 10)
-          
-          // Force a view refresh
-          setTimeout(() => {
-            if (mapInstance && typeof mapInstance.getCenter === 'function' && typeof mapInstance.getZoom === 'function') {
-              const center = mapInstance.getCenter()
-              const zoom = mapInstance.getZoom()
-              mapInstance.setView(center, zoom, { animate: false })
-            }
-          }, 100)
-        } catch (error) {
-          console.warn('Map resize error:', error)
-        }
-      }
-    }, 300)
-
-    return () => clearTimeout(timer)
-  }, [isControlPanelOpen, isClient, map])
-
-  // Additional effect specifically for control panel state changes
+  // NUCLEAR OPTION: Force map recreation when panel opens
   useEffect(() => {
     if (!isClient) return
 
+    // Force map recreation by changing key
+    setTimeout(() => {
+      setMapKey(prev => prev + 1)
+    }, 100)
+  }, [isControlPanelOpen, isClient])
+
+  // Handle map resize when control panel opens/closes - AGGRESSIVE APPROACH
+  useEffect(() => {
+    if (!isClient || !map) return
+
     const mapInstance = (window as any).mapInstance
-    if (mapInstance) {
-      // Force immediate refresh when panel state changes
+    if (!mapInstance) return
+
+    // Multiple refresh attempts with increasing delays
+    const refreshAttempts = [100, 300, 500, 1000]
+    
+    refreshAttempts.forEach((delay, index) => {
       setTimeout(() => {
         try {
+          // Force complete map refresh
           mapInstance.invalidateSize()
-          // Trigger a resize event to force tile reload
-          window.dispatchEvent(new Event('resize'))
+          
+          // Force tile reload by changing zoom slightly
+          const currentZoom = mapInstance.getZoom()
+          mapInstance.setZoom(currentZoom + 0.001)
+          
+          setTimeout(() => {
+            mapInstance.setZoom(currentZoom)
+            mapInstance.invalidateSize()
+          }, 50)
+          
+          // Force view refresh
+          setTimeout(() => {
+            const center = mapInstance.getCenter()
+            const zoom = mapInstance.getZoom()
+            mapInstance.setView(center, zoom, { animate: false })
+            mapInstance.invalidateSize()
+          }, 100)
+          
+          // Last attempt - force complete redraw
+          if (index === refreshAttempts.length - 1) {
+            setTimeout(() => {
+              mapInstance.invalidateSize()
+              // Force all layers to redraw
+              mapInstance.eachLayer((layer: any) => {
+                if (layer.redraw) layer.redraw()
+              })
+            }, 200)
+          }
         } catch (error) {
-          console.warn('Map panel state change error:', error)
+          console.warn(`Map refresh attempt ${index + 1} failed:`, error)
         }
-      }, 100)
-    }
-  }, [isControlPanelOpen, isClient])
+      }, delay)
+    })
+  }, [isControlPanelOpen, isClient, map])
 
   // Add ResizeObserver to handle container size changes
   useEffect(() => {
@@ -311,6 +317,7 @@ export default function FullInteractiveMap() {
       
       {/* Leaflet Map Container */}
       <div 
+        key={`map-container-${mapKey}`}
         id="map-container" 
         className={`h-full transition-all duration-300 ${
           isControlPanelOpen ? 'ml-80' : 'ml-0'
