@@ -29,8 +29,11 @@ export default function FullInteractiveMap() {
   const [isMapInitialized, setIsMapInitialized] = useState(false)
   const [showSO2Layer, setShowSO2Layer] = useState(false)
 
-  // Initialize map immediately
+  // Initialize map with retry mechanism
   useEffect(() => {
+    let retryCount = 0;
+    const maxRetries = 10;
+    const retryInterval = 100; // ms
 
     const initializeMap = async () => {
       try {
@@ -38,6 +41,20 @@ export default function FullInteractiveMap() {
         if (mapRef.current) {
           mapRef.current.remove()
           mapRef.current = null
+        }
+
+        // Check for container
+        const container = document.getElementById('map-container')
+        if (!container) {
+          retryCount++
+          if (retryCount < maxRetries) {
+            console.log(`Map container not found, retrying (${retryCount}/${maxRetries})...`)
+            setTimeout(initializeMap, retryInterval)
+            return
+          } else {
+            console.error('Map container not found after maximum retries')
+            return
+          }
         }
 
         // Import Leaflet
@@ -51,13 +68,6 @@ export default function FullInteractiveMap() {
           iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
           shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
         })
-
-        // Create map instance
-        const container = document.getElementById('map-container')
-        if (!container) {
-          console.error('Map container not found')
-          return
-        }
 
         const instance = L.map('map-container', {
           zoomControl: false
@@ -209,11 +219,20 @@ export default function FullInteractiveMap() {
       }
     }
 
+    let retryTimer: NodeJS.Timeout | null = null;
+
     // Initialize map
-    initializeMap()
+    const startInitialization = () => {
+      retryTimer = setTimeout(initializeMap, 0);
+    };
+
+    startInitialization();
 
     // Cleanup function
     return () => {
+      if (retryTimer) {
+        clearTimeout(retryTimer);
+      }
       if (mapRef.current) {
         mapRef.current.remove()
         mapRef.current = null
