@@ -246,9 +246,9 @@ export default function FullInteractiveMap() {
       const L = (await import('leaflet')).default;
       const map = mapRef.current;
 
-      // Clear existing markers
+      // Clear existing markers and circles
       map.eachLayer((layer: any) => {
-        if (layer instanceof L.Marker) {
+        if (layer instanceof L.Marker || layer instanceof L.Circle) {
           map.removeLayer(layer);
         }
       });
@@ -342,18 +342,33 @@ export default function FullInteractiveMap() {
         });
       }
 
-      // Add SO2 prediction markers and radius circle
-      if (showSO2Layer && so2Data && so2Data.predictions.length > 0) {
-        // Add radius circle
+      // Add SO2 prediction markers
+      if (so2Data && so2Data.predictions.length > 0) {
+        // Add coverage area
         L.circle(NASA_HQ_COORDS, {
           radius: 5000, // 5km radius
-          color: 'purple',
-          fillColor: 'purple',
+          color: 'gray',
+          fillColor: 'gray',
           fillOpacity: 0.05,
           weight: 1,
           dashArray: '5, 10'
         }).addTo(map);
 
+        // Add warning circles for high SO2 values first (so they appear behind markers)
+        so2Data.predictions.forEach((point) => {
+          if (point.prediction > 20) {
+            L.circle([point.latitude, point.longitude], {
+              radius: 300, // 300m radius
+              color: 'red',
+              fillColor: 'red',
+              fillOpacity: 0.15,
+              weight: 2,
+              dashArray: '5, 5'
+            }).addTo(map);
+          }
+        });
+
+        // Then add all SO2 markers
         so2Data.predictions.forEach((point) => {
           const so2Icon = L.divIcon({
             html: `
