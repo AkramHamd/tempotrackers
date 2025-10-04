@@ -44,7 +44,7 @@ export default function FullInteractiveMap() {
   })
   const getAQIColor = useAQIColor()
   const [isMapInitialized, setIsMapInitialized] = useState(false)
-  const [showSO2Layer, setShowSO2Layer] = useState(false)
+  const [showSO2Layer, setShowSO2Layer] = useState(true)
 
   // Initialize map once
   useEffect(() => {
@@ -272,6 +272,14 @@ export default function FullInteractiveMap() {
           map.removeLayer(layer);
         }
       });
+
+      // Ensure we have the correct tile layer
+      if (!map.hasLayer(L.TileLayer)) {
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+          maxZoom: 19
+        }).addTo(map);
+      }
       
       // Clear heatmap reference
       if (heatmapLayerRef.current) {
@@ -323,7 +331,7 @@ export default function FullInteractiveMap() {
       }
 
       // Add SO2 prediction heatmap
-      if (so2Data && so2Data.predictions.length > 0) {
+      if (showSO2Layer && so2Data && so2Data.predictions.length > 0) {
         // Add coverage area
         L.circle(DC_AREA_COORDS, {
           radius: 5000, // 5km radius
@@ -343,16 +351,17 @@ export default function FullInteractiveMap() {
 
         // Create and add heatmap layer
         const heat = (L as any).heatLayer(heatData, {
-          radius: 20,
-          blur: 15,
+          radius: 30, // Larger radius for better visibility
+          blur: 20, // Increased blur for smoother transitions
           maxZoom: 18,
           max: 1.0,
+          minOpacity: 0.4, // Minimum opacity for better visibility
           gradient: {
-            0.0: 'blue',
-            0.3: 'lime',
-            0.5: 'yellow',
-            0.7: 'orange',
-            1.0: 'red'
+            0.0: 'rgba(0, 0, 255, 0.7)',  // Blue with opacity
+            0.3: 'rgba(0, 255, 0, 0.7)',  // Lime with opacity
+            0.5: 'rgba(255, 255, 0, 0.7)', // Yellow with opacity
+            0.7: 'rgba(255, 165, 0, 0.7)', // Orange with opacity
+            1.0: 'rgba(255, 0, 0, 0.7)'    // Red with opacity
           }
         }).addTo(map);
 
@@ -361,7 +370,7 @@ export default function FullInteractiveMap() {
 
         // Add markers for high SO2 values
         so2Data.predictions.forEach((point: CirclePoint) => {
-          if (point.prediction > 20) {
+          if (point.prediction > 25) { // Higher threshold for alerts
             const marker = L.marker([point.latitude, point.longitude], {
               icon: L.divIcon({
                 html: `
