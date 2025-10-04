@@ -71,23 +71,27 @@ class SO2PredictionService {
     date: string
   ): PredictionResponse {
     // Generate fewer points in a smaller radius for better performance
-    const predictions: CirclePoint[] = Array.from({ length: 20 }, (_, i) => {
-      const angle = (i / 20) * 2 * Math.PI;
-      const radiusDeg = 5 / 111.32; // 5km radius for focused view
-      
-      const lat = latitude + radiusDeg * Math.cos(angle);
-      const lon = longitude + (radiusDeg * Math.sin(angle)) / Math.cos((latitude * Math.PI) / 180);
-      
-      // Generate a more realistic SO2 value pattern
-      const distanceFromCenter = Math.sqrt(Math.pow(lat - latitude, 2) + Math.pow(lon - longitude, 2));
-      const prediction = Math.max(5, 30 * (1 - distanceFromCenter / radiusDeg) + Math.random() * 5);
+    // Fixed points in a grid pattern around the center
+    const predictions: CirclePoint[] = [];
+    const gridSize = 3; // 3x3 grid
+    const spacing = 5 / 111.32; // 5km total coverage
 
-      return {
-        latitude: lat,
-        longitude: lon,
-        prediction
-      };
-    });
+    for (let i = -1; i <= 1; i++) {
+      for (let j = -1; j <= 1; j++) {
+        const lat = latitude + (spacing * i) / gridSize;
+        const lon = longitude + (spacing * j) / gridSize;
+        
+        // Fixed SO2 values based on distance from center
+        const distanceFromCenter = Math.sqrt(Math.pow(i, 2) + Math.pow(j, 2)) / Math.sqrt(2);
+        const prediction = Math.max(5, 30 * (1 - distanceFromCenter));
+        
+        predictions.push({
+          latitude: lat,
+          longitude: lon,
+          prediction
+        });
+      }
+    }
 
     const so2Values = predictions.map(p => p.prediction);
     const averageSO2 = so2Values.reduce((a, b) => a + b, 0) / so2Values.length;
