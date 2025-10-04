@@ -27,7 +27,23 @@ export default function FullInteractiveMap() {
     if (!isClient) return
 
     // Dynamically import Leaflet only on client side
+    let retryCount = 0
+    const maxRetries = 50 // Maximum 5 seconds of retries
+    
     const initMap = async () => {
+      // Check if map container exists
+      const mapContainer = document.getElementById('map-container')
+      if (!mapContainer) {
+        retryCount++
+        if (retryCount > maxRetries) {
+          console.error('Map container not found after maximum retries')
+          return
+        }
+        console.warn(`Map container not found, retrying... (${retryCount}/${maxRetries})`)
+        setTimeout(initMap, 100) // Retry after 100ms
+        return
+      }
+
       const L = (await import('leaflet')).default
       
       // Fix for default markers
