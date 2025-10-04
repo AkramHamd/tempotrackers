@@ -37,21 +37,13 @@ async def root():
         }
     }
 
-# Load the model
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "SO2_model.json")
+# Load the trained model
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "SO2_model.pkl")
 try:
-    import xgboost as xgb
-    model = xgb.Booster()
-    model.load_model(MODEL_PATH)
+    model = joblib.load(MODEL_PATH)
 except Exception as e:
     print(f"Error loading model: {e}")
-    # Try loading from pickle as fallback
-    try:
-        MODEL_PICKLE_PATH = os.path.join(os.path.dirname(__file__), "models", "SO2_model.pkl")
-        model = joblib.load(MODEL_PICKLE_PATH)
-    except Exception as e:
-        print(f"Error loading pickle model: {e}")
-        model = None
+    model = None
 
 class PredictionRequest(BaseModel):
     latitude: float
