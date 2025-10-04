@@ -73,8 +73,12 @@ export default function FullInteractiveMap() {
           zoomControl: false
         }).setView(NASA_HQ_COORDS, 13)
 
-        // Store map instance in ref
-        mapRef.current = instance
+        // Wait for map to be ready
+        instance.whenReady(() => {
+          // Store map instance in ref
+          mapRef.current = instance
+          setIsMapInitialized(true)
+        })
 
         // Add zoom control
         L.control.zoom({
@@ -213,7 +217,7 @@ export default function FullInteractiveMap() {
           })
         }
 
-        setIsMapInitialized(true)
+        // Map initialization is handled in whenReady callback
       } catch (error) {
         console.error('Error initializing map:', error)
       }
@@ -389,12 +393,21 @@ export default function FullInteractiveMap() {
 
   // Handle map resize when control panel opens/closes
   useEffect(() => {
-    if (!isMapInitialized || !mapRef.current) return
+    if (!isMapInitialized || !mapRef.current) return;
 
-    // Force map to recalculate size
-    setTimeout(() => {
-      mapRef.current.invalidateSize()
-    }, 300)
+    const resizeTimer = setTimeout(() => {
+      // Double check map ref is still valid after timeout
+      if (mapRef.current) {
+        try {
+          mapRef.current.invalidateSize();
+        } catch (error) {
+          console.warn('Failed to resize map:', error);
+        }
+      }
+    }, 300);
+
+    // Clean up timer
+    return () => clearTimeout(resizeTimer);
   }, [isControlPanelOpen, isMapInitialized])
 
   // No resize handling needed - map container never changes size
@@ -498,11 +511,6 @@ export default function FullInteractiveMap() {
         onToggle={() => setIsControlPanelOpen(!isControlPanelOpen)} 
       />
       
-      {/* Leaflet Map Container - Full width, no resize */}
-      <div 
-        id="map-container" 
-        className="h-full w-full"
-      ></div>
 
       {/* City Search Component */}
       <CitySearch onCitySelect={handleCitySelect} />
