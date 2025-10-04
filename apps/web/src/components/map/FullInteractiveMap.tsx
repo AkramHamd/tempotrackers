@@ -30,17 +30,24 @@ export default function FullInteractiveMap() {
       const mapInstance = (window as any).mapInstance
       if (mapInstance && typeof mapInstance.invalidateSize === 'function') {
         try {
-          // Simple and reliable map refresh
+          // Force map to recalculate size and reload tiles
           mapInstance.invalidateSize()
           
-          // Force a gentle view refresh
+          // Force tile layer refresh by temporarily changing zoom
+          const currentZoom = mapInstance.getZoom()
+          mapInstance.setZoom(currentZoom + 0.01)
+          setTimeout(() => {
+            mapInstance.setZoom(currentZoom)
+          }, 10)
+          
+          // Force a view refresh
           setTimeout(() => {
             if (mapInstance && typeof mapInstance.getCenter === 'function' && typeof mapInstance.getZoom === 'function') {
               const center = mapInstance.getCenter()
               const zoom = mapInstance.getZoom()
               mapInstance.setView(center, zoom, { animate: false })
             }
-          }, 50)
+          }, 100)
         } catch (error) {
           console.warn('Map resize error:', error)
         }
@@ -49,6 +56,25 @@ export default function FullInteractiveMap() {
 
     return () => clearTimeout(timer)
   }, [isControlPanelOpen, isClient, map])
+
+  // Additional effect specifically for control panel state changes
+  useEffect(() => {
+    if (!isClient) return
+
+    const mapInstance = (window as any).mapInstance
+    if (mapInstance) {
+      // Force immediate refresh when panel state changes
+      setTimeout(() => {
+        try {
+          mapInstance.invalidateSize()
+          // Trigger a resize event to force tile reload
+          window.dispatchEvent(new Event('resize'))
+        } catch (error) {
+          console.warn('Map panel state change error:', error)
+        }
+      }, 100)
+    }
+  }, [isControlPanelOpen, isClient])
 
   // Add ResizeObserver to handle container size changes
   useEffect(() => {
@@ -63,10 +89,16 @@ export default function FullInteractiveMap() {
         setTimeout(() => {
           try {
             mapInstance.invalidateSize()
+            // Force tile refresh with micro zoom change
+            const currentZoom = mapInstance.getZoom()
+            mapInstance.setZoom(currentZoom + 0.001)
+            setTimeout(() => {
+              mapInstance.setZoom(currentZoom)
+            }, 5)
           } catch (error) {
             console.warn('Map resize observer error:', error)
           }
-        }, 100)
+        }, 150)
       }
     })
 
