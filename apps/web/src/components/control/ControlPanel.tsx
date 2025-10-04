@@ -64,9 +64,9 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
   }
 
   return (
-    <div className={`fixed left-0 top-0 h-full bg-white shadow-xl z-[1000] transition-all duration-300 ${
+    <div className={`fixed left-0 top-0 h-full bg-white/95 backdrop-blur-sm shadow-xl z-[1000] transition-all duration-500 ease-in-out transform flex flex-col ${
       isMinimized ? 'w-16' : 'w-80'
-    }`}>
+    } ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200">
         {!isMinimized && (
@@ -100,17 +100,21 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
       </div>
 
       {/* Navigation */}
-      <div className="p-2">
+      <div className="p-2 flex-shrink-0">
         <nav className="space-y-1">
-          {sections.map((section) => (
+          {sections.map((section, index) => (
             <button
               key={section.id}
               onClick={() => setActiveSection(section.id)}
-              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
+              className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg transition-all duration-300 hover:scale-105 ${
                 activeSection === section.id
                   ? 'bg-blue-50 text-blue-700 border border-blue-200'
                   : 'text-gray-700 hover:bg-gray-50'
               }`}
+              style={{
+                animationDelay: `${index * 50}ms`,
+                animation: isOpen ? 'fadeInUp 0.3s ease-out forwards' : 'none'
+              }}
             >
               <span className="text-lg">{section.icon}</span>
               {!isMinimized && <span className="text-sm font-medium">{section.name}</span>}
@@ -121,7 +125,13 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
 
       {/* Content */}
       {!isMinimized && (
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4 min-h-0 custom-scrollbar">
+          <div 
+            className="animate-fadeInUp"
+            style={{
+              animation: 'fadeInUp 0.4s ease-out forwards'
+            }}
+          >
           {activeSection === 'overview' && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900">Air Quality Overview</h3>
@@ -166,29 +176,56 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
                 </div>
               )}
 
-              {/* Data Sources Status */}
+              {/* Map Legend */}
+              <div className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-lg p-4">
+                <h4 className="font-medium text-gray-900 mb-3">Map Legend</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded-full bg-blue-600"></div>
+                    <span className="text-gray-600">NASA Headquarters</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                    <span className="text-gray-600">Good Air Quality (AQI 0-50)</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+                    <span className="text-gray-600">Moderate Air Quality (AQI 51-100)</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                    <span className="text-gray-600">Unhealthy for Sensitive Groups (AQI 101-150)</span>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                    <span className="text-gray-600">Unhealthy (AQI 151+)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* System Status */}
               <div className="bg-gradient-to-r from-purple-50 to-violet-50 rounded-lg p-4">
-                <h4 className="font-medium text-gray-900 mb-2">Data Sources</h4>
+                <h4 className="font-medium text-gray-900 mb-2">System Status</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">TEMPO Satellite</span>
+                    <span className="text-gray-600">Data Collection</span>
+                    <div className="flex items-center space-x-1">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-green-600 font-medium">Online</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-600">Processing</span>
                     <div className="flex items-center space-x-1">
                       <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                       <span className="text-green-600 font-medium">Active</span>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Ground Stations</span>
+                    <span className="text-gray-600">AI Models</span>
                     <div className="flex items-center space-x-1">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-green-600 font-medium">Active</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-600">Weather API</span>
-                    <div className="flex items-center space-x-1">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="text-green-600 font-medium">Active</span>
+                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                      <span className="text-yellow-600 font-medium">Training</span>
                     </div>
                   </div>
                 </div>
@@ -201,42 +238,69 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
               <h3 className="text-lg font-semibold text-gray-900">Data Sources</h3>
               
               <div className="space-y-3">
-                <div className="border border-gray-200 rounded-lg p-3">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <span className="text-lg">🛰️</span>
-                    <h4 className="font-medium text-gray-900">TEMPO Satellite</h4>
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xl">🛰️</span>
+                      <h4 className="font-semibold text-gray-900">TEMPO Satellite</h4>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-green-600 text-xs font-medium">Active</span>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-600 mb-2">
-                    NASA's Tropospheric Emissions: Monitoring of Pollution satellite data
+                  <p className="text-sm text-gray-600 mb-3">
+                    NASA's Tropospheric Emissions: Monitoring of Pollution satellite providing hourly air quality data across North America.
                   </p>
-                  <div className="text-xs text-gray-500">
-                    Coverage: North America | Resolution: 2km | Update: Every hour
+                  <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+                    <div>Coverage: North America</div>
+                    <div>Resolution: 2km</div>
+                    <div>Update: Every hour</div>
+                    <div>Points: {airQualityData?.filter(d => d.source === 'TEMPO').length || 0}</div>
                   </div>
                 </div>
 
-                <div className="border border-gray-200 rounded-lg p-3">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <span className="text-lg">🏭</span>
-                    <h4 className="font-medium text-gray-900">Ground Stations</h4>
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xl">🏭</span>
+                      <h4 className="font-semibold text-gray-900">Ground Stations</h4>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-green-600 text-xs font-medium">Active</span>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-600 mb-2">
-                    EPA and local air quality monitoring stations
+                  <p className="text-sm text-gray-600 mb-3">
+                    EPA and local air quality monitoring stations providing real-time measurements.
                   </p>
-                  <div className="text-xs text-gray-500">
-                    Stations: {airQualityData?.filter(d => d.source === 'Ground Station').length || 0} | Update: Real-time
+                  <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+                    <div>Stations: {airQualityData?.filter(d => d.source === 'Ground Station').length || 0}</div>
+                    <div>Update: Real-time</div>
+                    <div>Accuracy: High</div>
+                    <div>Coverage: Local</div>
                   </div>
                 </div>
 
-                <div className="border border-gray-200 rounded-lg p-3">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <span className="text-lg">🌤️</span>
-                    <h4 className="font-medium text-gray-900">Weather Data</h4>
+                <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center space-x-2">
+                      <span className="text-xl">🌤️</span>
+                      <h4 className="font-semibold text-gray-900">Weather Data</h4>
+                    </div>
+                    <div className="flex items-center space-x-1">
+                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                      <span className="text-green-600 text-xs font-medium">Active</span>
+                    </div>
                   </div>
-                  <p className="text-sm text-gray-600 mb-2">
-                    Meteorological data for air quality correlation
+                  <p className="text-sm text-gray-600 mb-3">
+                    Meteorological data for air quality correlation and prediction modeling.
                   </p>
-                  <div className="text-xs text-gray-500">
-                    Source: OpenWeatherMap | Update: Every 5 minutes
+                  <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+                    <div>Source: OpenWeatherMap</div>
+                    <div>Update: Every 5 min</div>
+                    <div>Parameters: 6</div>
+                    <div>Accuracy: 95%</div>
                   </div>
                 </div>
               </div>
@@ -444,6 +508,7 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
               </div>
             </div>
           )}
+          </div>
         </div>
       )}
     </div>
