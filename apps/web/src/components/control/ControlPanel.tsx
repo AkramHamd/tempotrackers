@@ -474,6 +474,9 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
                     onToggle={() => setIsChatOpen(false)} 
                     showFloatingButton={false} 
                     embedded={true}
+                    currentAQI={averageAQI}
+                    airQualityData={airQualityData}
+                    weatherData={weatherData || undefined}
                   />
                 </div>
               )}

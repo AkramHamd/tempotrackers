@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const { message } = req.body;
+    const { message, contextData } = req.body;
     
     if (!message) {
       return res.status(400).json({ error: 'Message is required' });
@@ -22,7 +22,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('Processing message:', message.substring(0, 50) + '...');
     
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    // System instruction para el modelo
+    const systemInstruction = `Eres un asistente especializado en calidad del aire y salud pública del sistema TempoTrackers de la NASA.
+
+MISIÓN: Asesorar sobre calidad del aire usando datos TEMPO de la NASA, con enfoque especial en grupos vulnerables (niños, ancianos, embarazadas, personas con asma/EPOC, enfermedades cardíacas).
+
+CONOCIMIENTOS:
+- AQI: 0-50 Buena, 51-100 Moderada, 101-150 Insalubre para sensibles, 151-200 Insalubre, 201-300 Muy insalubre, 300+ Peligrosa
+- Contaminantes: PM2.5, PM10, O3, NO2, SO2, CO
+- Factores: viento, humedad, temperatura, presión
+
+ESTILO: Respuestas directas, empáticas, orientadas a la acción. NO te presentes en cada respuesta. Da recomendaciones específicas y explica el porqué.
+
+DATOS ACTUALES:${contextData ? `
+- AQI Promedio: ${contextData.averageAQI} (${contextData.averageAQI <= 50 ? 'Buena' : contextData.averageAQI <= 100 ? 'Moderada' : contextData.averageAQI <= 150 ? 'Insalubre para sensibles' : contextData.averageAQI <= 200 ? 'Insalubre' : 'Muy insalubre'})
+- Estaciones: ${contextData.dataPoints}
+- Clima: ${contextData.weather ? `${contextData.weather.temperature}°C, ${contextData.weather.humidity}% humedad, viento ${contextData.weather.windSpeed} m/s` : 'No disponible'}
+- Actualizado: ${contextData.timestamp}` : 'Datos no disponibles'}`;
+
+    const model = genAI.getGenerativeModel({ 
+      model: "gemini-2.5-flash",
+      systemInstruction: systemInstruction
+    });
+    
     const result = await model.generateContent(message);
     const reply = result.response.text();
 
