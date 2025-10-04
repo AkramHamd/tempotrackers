@@ -1,7 +1,7 @@
 // Full Interactive Map Component with Leaflet.js
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useAirQualityData, useAQIColor } from '../../lib/hooks/useData'
 import ControlPanel from '../control/ControlPanel'
@@ -10,253 +10,224 @@ import ControlPanel from '../control/ControlPanel'
 const NASA_HQ_COORDS = [38.8833, -77.0167] as [number, number]
 
 export default function FullInteractiveMap() {
-  const [isClient, setIsClient] = useState(false)
-  const [map, setMap] = useState<any>(null)
+  const mapRef = useRef<any>(null)
   const [currentLayer, setCurrentLayer] = useState('satellite')
   const [isControlPanelOpen, setIsControlPanelOpen] = useState(false)
   const { data: airQualityData, loading, error } = useAirQualityData()
   const getAQIColor = useAQIColor()
+  const [isMapInitialized, setIsMapInitialized] = useState(false)
 
+  // Initialize map only once when component mounts
   useEffect(() => {
-    setIsClient(true)
-  }, [])
-
-  // Additional effect to ensure map loads after navigation
-  useEffect(() => {
-    if (!isClient) return
-
-    // Multiple attempts to ensure map loads after navigation
-    const attempts = [100, 300, 500, 1000] // Try at different intervals
-    
-    attempts.forEach((delay, index) => {
-      const timer = setTimeout(() => {
-        const mapContainer = document.getElementById('map-container')
-        if (mapContainer && !(window as any).mapInstance) {
-          console.log(`Triggering map initialization after navigation... (attempt ${index + 1})`)
-          // Force re-run of map initialization
-          const event = new CustomEvent('map-init-required')
-          window.dispatchEvent(event)
+    const initializeMap = async () => {
+      try {
+        // Clean up existing map if any
+        if (mapRef.current) {
+          mapRef.current.remove()
+          mapRef.current = null
         }
-      }, delay)
 
-      // Clean up timers
-      return () => clearTimeout(timer)
-    })
-  }, [isClient])
+        // Import Leaflet
+        const L = (await import('leaflet')).default
+        require('leaflet/dist/leaflet.css')
+
+        // Fix default marker icons
+        delete (L.Icon.Default.prototype as any)._getIconUrl
+        L.Icon.Default.mergeOptions({
+          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+        })
+
+        // Create map instance
+        const container = document.getElementById('map-container')
+        if (!container) {
+          console.error('Map container not found')
+          return
+        }
+
+        const instance = L.map('map-container', {
+          zoomControl: false
+        }).setView(NASA_HQ_COORDS, 13)
+
+        // Store map instance in ref
+        mapRef.current = instance
+
+        // Add zoom control
+        L.control.zoom({
+          position: 'bottomright'
+        }).addTo(instance)
+
+        // Set initial layer
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+          maxZoom: 19
+        }).addTo(instance)
+
+        // Create NASA HQ marker
+        const nasaIcon = L.divIcon({
+          html: `
+            <div style="
+              width: 32px; 
+              height: 32px; 
+              background: #1e40af; 
+              border-radius: 50%; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center; 
+              color: white; 
+              font-weight: bold; 
+              font-size: 12px;
+              border: 2px solid white;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            ">NASA</div>
+          `,
+          className: 'custom-div-icon',
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+        })
+
+        const nasaMarker = L.marker(NASA_HQ_COORDS, { icon: nasaIcon }).addTo(instance)
+        
+        // Get NASA HQ data if available
+        const nasaData = airQualityData?.find(data => data.id === 'nasa-hq')
+        
+        nasaMarker.bindPopup(`
+          <div style="padding: 8px;">
+            <h3 style="font-weight: bold; color: #1e40af; margin: 0 0 4px 0;">NASA Headquarters</h3>
+            <p style="font-size: 12px; color: #666; margin: 0 0 8px 0;">Washington D.C.</p>
+            <p style="font-size: 12px; color: #333; margin: 0 0 8px 0;">
+              The headquarters of the National Aeronautics and Space Administration, 
+              where the TEMPO mission is managed and coordinated.
+            </p>
+            <div style="border-top: 1px solid #eee; padding-top: 8px;">
+              <p style="font-size: 11px; color: #666; margin: 0;">
+                <strong>Current AQI:</strong> ${nasaData ? `${nasaData.aqi} (${nasaData.quality})` : 'Loading...'}<br/>
+                <strong>PM2.5:</strong> ${nasaData ? `${nasaData.pollutants.pm25} μg/m³` : 'Loading...'}<br/>
+                <strong>Source:</strong> ${nasaData ? nasaData.source : 'Loading...'}<br/>
+                <strong>Last Updated:</strong> ${nasaData ? nasaData.timestamp.toLocaleTimeString() : 'Loading...'}
+              </p>
+            </div>
+          </div>
+        `)
+
+        // Add air quality markers from real data
+        if (airQualityData && airQualityData.length > 0) {
+          airQualityData.forEach((data) => {
+            // Skip NASA HQ as it has its own marker
+            if (data.id === 'nasa-hq') return
+            
+            const aqiIcon = L.divIcon({
+              html: `
+                <div style="
+                  width: 24px; 
+                  height: 24px; 
+                  background: ${getAQIColor(data.aqi)}; 
+                  border-radius: 50%; 
+                  display: flex; 
+                  align-items: center; 
+                  justify-content: center; 
+                  color: white; 
+                  font-weight: bold; 
+                  font-size: 8px;
+                  border: 2px solid white;
+                  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                ">${data.aqi}</div>
+              `,
+              className: 'custom-div-icon',
+              iconSize: [24, 24],
+              iconAnchor: [12, 12]
+            })
+
+            const aqiMarker = L.marker([data.latitude, data.longitude], { icon: aqiIcon }).addTo(instance)
+            aqiMarker.bindPopup(`
+              <div style="padding: 8px;">
+                <h3 style="font-weight: bold; color: #333; margin: 0 0 4px 0;">Air Quality Station</h3>
+                <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">AQI: <strong>${data.aqi}</strong></p>
+                <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Quality: <strong>${data.quality}</strong></p>
+                <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">PM2.5: <strong>${data.pollutants.pm25} μg/m³</strong></p>
+                <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Source: <strong>${data.source}</strong></p>
+                <p style="font-size: 11px; color: #999; margin: 0;">Updated: ${data.timestamp.toLocaleTimeString()}</p>
+              </div>
+            `)
+          })
+        }
+
+        setIsMapInitialized(true)
+      } catch (error) {
+        console.error('Error initializing map:', error)
+      }
+    }
+
+    // Initialize map
+    initializeMap()
+
+    // Cleanup function
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove()
+        mapRef.current = null
+        setIsMapInitialized(false)
+      }
+    }
+  }, [airQualityData, getAQIColor])
+
+  // Handle map resize when control panel opens/closes
+  useEffect(() => {
+    if (!isMapInitialized || !mapRef.current) return
+
+    // Force map to recalculate size
+    setTimeout(() => {
+      mapRef.current.invalidateSize()
+    }, 300)
+  }, [isControlPanelOpen, isMapInitialized])
 
   // No resize handling needed - map container never changes size
 
-  useEffect(() => {
-    if (!isClient) return
 
-    // Cleanup any existing map instance first
-    if ((window as any).mapInstance) {
-      (window as any).mapInstance.remove()
-      ;(window as any).mapInstance = null
-    }
+  const switchLayer = async (layerKey: string) => {
+    if (!isMapInitialized || !mapRef.current) return
 
-    // Dynamically import Leaflet only on client side
-    let retryCount = 0
-    const maxRetries = 50 // Maximum 5 seconds of retries
-    let initTimer: NodeJS.Timeout | null = null
-    
-    const initMap = async () => {
-      // Check if map container exists
-      const mapContainer = document.getElementById('map-container')
-      if (!mapContainer) {
-        retryCount++
-        if (retryCount > maxRetries) {
-          console.error('Map container not found after maximum retries')
-          return
-        }
-        console.warn(`Map container not found, retrying... (${retryCount}/${maxRetries})`)
-        initTimer = setTimeout(initMap, 100) // Retry after 100ms
-        return
-      }
+    const L = (await import('leaflet')).default
+    const map = mapRef.current
 
-      // Import Leaflet
-      const L = (await import('leaflet')).default
-      
-      // Fix for default markers
-      delete (L.Icon.Default.prototype as any)._getIconUrl
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-      })
-
-      // Create map
-      const mapInstance = L.map('map-container', {
-        zoomControl: false // Disable default zoom control
-      }).setView(NASA_HQ_COORDS, 13)
-      setMap(mapInstance)
-      
-      // Add custom zoom control positioned away from control panel
-      const zoomControl = L.control.zoom({
-        position: 'bottomright' // Position in bottom-right corner
-      }).addTo(mapInstance)
-      
-      // Store map instance globally for resize access
-      ;(window as any).mapInstance = mapInstance
-
-      // Add satellite layer by default
-      const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-        maxZoom: 19
-      }).addTo(mapInstance)
-
-      // Create NASA HQ marker
-      const nasaIcon = L.divIcon({
-        html: `
-          <div style="
-            width: 32px; 
-            height: 32px; 
-            background: #1e40af; 
-            border-radius: 50%; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            color: white; 
-            font-weight: bold; 
-            font-size: 12px;
-            border: 2px solid white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-          ">NASA</div>
-        `,
-        className: 'custom-div-icon',
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
-      })
-
-      const nasaMarker = L.marker(NASA_HQ_COORDS, { icon: nasaIcon }).addTo(mapInstance)
-      
-      // Get NASA HQ data if available
-      const nasaData = airQualityData?.find(data => data.id === 'nasa-hq')
-      
-      nasaMarker.bindPopup(`
-        <div style="padding: 8px;">
-          <h3 style="font-weight: bold; color: #1e40af; margin: 0 0 4px 0;">NASA Headquarters</h3>
-          <p style="font-size: 12px; color: #666; margin: 0 0 8px 0;">Washington D.C.</p>
-          <p style="font-size: 12px; color: #333; margin: 0 0 8px 0;">
-            The headquarters of the National Aeronautics and Space Administration, 
-            where the TEMPO mission is managed and coordinated.
-          </p>
-          <div style="border-top: 1px solid #eee; padding-top: 8px;">
-            <p style="font-size: 11px; color: #666; margin: 0;">
-              <strong>Current AQI:</strong> ${nasaData ? `${nasaData.aqi} (${nasaData.quality})` : 'Loading...'}<br/>
-              <strong>PM2.5:</strong> ${nasaData ? `${nasaData.pollutants.pm25} μg/m³` : 'Loading...'}<br/>
-              <strong>Source:</strong> ${nasaData ? nasaData.source : 'Loading...'}<br/>
-              <strong>Last Updated:</strong> ${nasaData ? nasaData.timestamp.toLocaleTimeString() : 'Loading...'}
-            </p>
-          </div>
-        </div>
-      `)
-
-      // Add air quality markers from real data
-      if (airQualityData && airQualityData.length > 0) {
-        airQualityData.forEach((data) => {
-          // Skip NASA HQ as it has its own marker
-          if (data.id === 'nasa-hq') return
-          
-          const aqiIcon = L.divIcon({
-            html: `
-              <div style="
-                width: 24px; 
-                height: 24px; 
-                background: ${getAQIColor(data.aqi)}; 
-                border-radius: 50%; 
-                display: flex; 
-                align-items: center; 
-                justify-content: center; 
-                color: white; 
-                font-weight: bold; 
-                font-size: 8px;
-                border: 2px solid white;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-              ">${data.aqi}</div>
-            `,
-            className: 'custom-div-icon',
-            iconSize: [24, 24],
-            iconAnchor: [12, 12]
-          })
-
-          const aqiMarker = L.marker([data.latitude, data.longitude], { icon: aqiIcon }).addTo(mapInstance)
-          aqiMarker.bindPopup(`
-            <div style="padding: 8px;">
-              <h3 style="font-weight: bold; color: #333; margin: 0 0 4px 0;">Air Quality Station</h3>
-              <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">AQI: <strong>${data.aqi}</strong></p>
-              <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Quality: <strong>${data.quality}</strong></p>
-              <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">PM2.5: <strong>${data.pollutants.pm25} μg/m³</strong></p>
-              <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Source: <strong>${data.source}</strong></p>
-              <p style="font-size: 11px; color: #999; margin: 0;">Updated: ${data.timestamp.toLocaleTimeString()}</p>
-            </div>
-          `)
-        })
-      }
-
-      // Store layers for switching
-      const layers = {
-        satellite: satelliteLayer,
-        street: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-          maxZoom: 19
-        }),
-        terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-          attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
-          maxZoom: 17
-        })
-      }
-
-      // Store layers globally for switching
-      ;(window as any).mapLayers = layers
-    }
-
-    initMap()
-
-    // Add event listener for navigation-triggered initialization
-    const handleMapInitRequired = () => {
-      console.log('Map init required event received, retrying...')
-      initMap()
-    }
-    
-    window.addEventListener('map-init-required', handleMapInitRequired)
-
-    // Cleanup
-    return () => {
-      window.removeEventListener('map-init-required', handleMapInitRequired)
-      if (initTimer) {
-        clearTimeout(initTimer)
-      }
-      if (map) {
-        map.remove()
-        setMap(null)
-      }
-      if ((window as any).mapInstance) {
-        (window as any).mapInstance.remove()
-        ;(window as any).mapInstance = null
-      }
-    }
-  }, [isClient, airQualityData, getAQIColor])
-
-  const switchLayer = (layerKey: string) => {
-    if (!isClient || !(window as any).mapLayers || !(window as any).mapInstance) return
-
-    const layers = (window as any).mapLayers
-    const mapInstance = (window as any).mapInstance
-
-    // Remove current layer
-    mapInstance.eachLayer((layer: any) => {
-      if (layer instanceof (window as any).L.TileLayer) {
-        mapInstance.removeLayer(layer)
+    // Remove current tile layers
+    map.eachLayer((layer: any) => {
+      if (layer instanceof L.TileLayer) {
+        map.removeLayer(layer)
       }
     })
 
-    // Add new layer
-    layers[layerKey].addTo(mapInstance)
-    setCurrentLayer(layerKey)
+    // Add new layer based on key
+    let newLayer
+    switch (layerKey) {
+      case 'satellite':
+        newLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+          maxZoom: 19
+        })
+        break
+      case 'street':
+        newLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19
+        })
+        break
+      case 'terrain':
+        newLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+          attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+          maxZoom: 17
+        })
+        break
+    }
+
+    if (newLayer) {
+      newLayer.addTo(map)
+      setCurrentLayer(layerKey)
+    }
   }
 
-  if (!isClient || loading) {
+  if (loading) {
     return (
       <div className="h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
