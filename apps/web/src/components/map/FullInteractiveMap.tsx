@@ -9,7 +9,6 @@ import ControlPanel from '../control/ControlPanel'
 import CitySearch from './CitySearch'
 import DatePicker from './DatePicker'
 import { CirclePoint } from '../../lib/types/so2'
-import 'leaflet.heat'
 
 // Center coordinates for Washington D.C. area
 const DC_AREA_COORDS = [38.9072, -77.0369] as [number, number]
@@ -65,9 +64,10 @@ export default function FullInteractiveMap() {
           return
         }
 
-        // Import Leaflet
+        // Import Leaflet and its dependencies
         const L = (await import('leaflet')).default
         require('leaflet/dist/leaflet.css')
+        await import('leaflet.heat')
 
         const instance = L.map('map-container', {
           zoomControl: false,
@@ -350,7 +350,8 @@ export default function FullInteractiveMap() {
         });
 
         // Create and add heatmap layer
-        const heat = (L as any).heatLayer(heatData, {
+        const HeatLayer = (L as any).heatLayer;
+        const heat = new HeatLayer(heatData, {
           radius: 30, // Larger radius for better visibility
           blur: 20, // Increased blur for smoother transitions
           maxZoom: 18,
