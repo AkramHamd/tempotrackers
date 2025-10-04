@@ -56,16 +56,17 @@ class SO2PredictionService {
     longitude: number,
     date: string
   ): PredictionResponse {
-    // Generate circle points with mock predictions
-    const predictions: CirclePoint[] = Array.from({ length: 100 }, (_, i) => {
-      const angle = (i / 100) * 2 * Math.PI;
-      const radiusDeg = 50 / 111.32; // 50km radius
+    // Generate fewer points in a smaller radius for better performance
+    const predictions: CirclePoint[] = Array.from({ length: 20 }, (_, i) => {
+      const angle = (i / 20) * 2 * Math.PI;
+      const radiusDeg = 5 / 111.32; // 5km radius for focused view
       
       const lat = latitude + radiusDeg * Math.cos(angle);
       const lon = longitude + (radiusDeg * Math.sin(angle)) / Math.cos((latitude * Math.PI) / 180);
       
-      // Generate a mock SO2 value that varies with position
-      const prediction = Math.abs(20 + 10 * Math.sin(angle) + 5 * Math.cos(2 * angle));
+      // Generate a more realistic SO2 value pattern
+      const distanceFromCenter = Math.sqrt(Math.pow(lat - latitude, 2) + Math.pow(lon - longitude, 2));
+      const prediction = Math.max(5, 30 * (1 - distanceFromCenter / radiusDeg) + Math.random() * 5);
 
       return {
         latitude: lat,

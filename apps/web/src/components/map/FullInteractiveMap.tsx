@@ -70,8 +70,10 @@ export default function FullInteractiveMap() {
         })
 
         const instance = L.map('map-container', {
-          zoomControl: false
-        }).setView(NASA_HQ_COORDS, 13)
+          zoomControl: false,
+          minZoom: 11, // Prevent zooming out too far
+          maxZoom: 18
+        }).setView(NASA_HQ_COORDS, 15) // Zoom in closer
 
         // Wait for map to be ready
         instance.whenReady(() => {
@@ -349,8 +351,18 @@ export default function FullInteractiveMap() {
         });
       }
 
-      // Add SO2 prediction markers
+      // Add SO2 prediction markers and radius circle
       if (showSO2Layer && so2Data && so2Data.predictions.length > 0) {
+        // Add radius circle
+        L.circle(NASA_HQ_COORDS, {
+          radius: 5000, // 5km radius
+          color: 'purple',
+          fillColor: 'purple',
+          fillOpacity: 0.05,
+          weight: 1,
+          dashArray: '5, 10'
+        }).addTo(map);
+
         so2Data.predictions.forEach((point) => {
           const so2Icon = L.divIcon({
             html: `
@@ -616,13 +628,24 @@ export default function FullInteractiveMap() {
             <div className="flex flex-col space-y-1">
               <button
                 onClick={() => setShowSO2Layer(!showSO2Layer)}
-                className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
+                className={`px-3 py-2 text-sm font-medium rounded transition-colors relative ${
                   showSO2Layer
                     ? 'bg-purple-600 text-white'
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
+                disabled={so2Loading}
               >
-                SO₂ Predictions
+                <span className="flex items-center space-x-2">
+                  <span>SO₂ Predictions</span>
+                  {so2Loading && (
+                    <span className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-current"></span>
+                  )}
+                </span>
+                {showSO2Layer && so2Data && (
+                  <span className="absolute -top-1 -right-1 bg-green-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                    {so2Data.predictions.length}
+                  </span>
+                )}
               </button>
             </div>
           </div>
