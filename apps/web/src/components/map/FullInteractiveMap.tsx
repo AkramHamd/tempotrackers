@@ -459,38 +459,39 @@ export default function FullInteractiveMap() {
 
   const error = aqiError || so2Error;
 
-  if (!isMapInitialized) {
-    return (
-      <div className="h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading TempoTrackers Map...</p>
-          {(aqiLoading || so2Loading) && <p className="text-sm text-gray-500 mt-2">Fetching air quality data...</p>}
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="h-screen bg-gray-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Map</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="relative h-screen w-full">
+      {/* Map Container - Always render this first */}
+      <div id="map-container" className="h-full w-full" />
+
+      {/* Loading Overlay */}
+      {!isMapInitialized && (
+        <div className="absolute inset-0 bg-gray-100 flex items-center justify-center z-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading TempoTrackers Map...</p>
+            {(aqiLoading || so2Loading) && <p className="text-sm text-gray-500 mt-2">Fetching air quality data...</p>}
+          </div>
+        </div>
+      )}
+
+      {/* Error Overlay */}
+      {error && (
+        <div className="absolute inset-0 bg-gray-100 flex items-center justify-center z-50">
+          <div className="text-center">
+            <div className="text-red-500 text-6xl mb-4">⚠️</div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Map</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Control Panel */}
       <ControlPanel 
         isOpen={isControlPanelOpen} 
