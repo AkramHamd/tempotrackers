@@ -229,10 +229,9 @@ export default function FullInteractiveMap() {
         className="h-full w-full"
       ></div>
 
-      {/* Map Info Panel - Always visible, positioned to avoid control panel */}
-      <div className={`absolute bottom-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 max-w-xs transition-all duration-300 ${
-        isControlPanelOpen ? 'left-80' : 'left-4'
-      }`}>
+      {/* Map Info Panel - Hidden when control panel is open */}
+      {!isControlPanelOpen && (
+        <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 max-w-xs transition-all duration-300">
           <div className="flex items-center space-x-2 mb-2">
             <div className="w-6 h-6 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xs">T</span>
@@ -247,11 +246,11 @@ export default function FullInteractiveMap() {
             <div>Last Update: {airQualityData?.[0]?.timestamp.toLocaleTimeString() || 'Loading...'}</div>
           </div>
         </div>
+      )}
 
-      {/* Navigation Header - Always visible, positioned to avoid control panel */}
-      <div className={`absolute top-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 transition-all duration-300 ${
-        isControlPanelOpen ? 'left-80' : 'left-4'
-      }`}>
+      {/* Navigation Header - Hidden when control panel is open */}
+      {!isControlPanelOpen && (
+        <div className="absolute top-4 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 transition-all duration-300">
         <div className="flex items-center space-x-3">
           <Link href="/" className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
@@ -265,6 +264,7 @@ export default function FullInteractiveMap() {
           </Link>
         </div>
         </div>
+      )}
 
       {/* Map Tools Panel */}
       <div className={`absolute top-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 transition-all duration-300 ${
@@ -324,3 +324,4 @@ export default function FullInteractiveMap() {
     </div>
   )
 }
+
