@@ -1,4 +1,4 @@
-// Simplified Map Component for Home Page
+// Simplified Map Component for Home Page with Leaflet.js
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -30,6 +30,116 @@ const HomeMapPreview = () => {
     setIsClient(true)
   }, [])
 
+  useEffect(() => {
+    if (!isClient) return
+
+    // Dynamically import Leaflet only on client side
+    const initMap = async () => {
+      const L = (await import('leaflet')).default
+      
+      // Fix for default markers
+      delete (L.Icon.Default.prototype as any)._getIconUrl
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+        iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+      })
+
+      // Create map
+      const mapInstance = L.map('home-map-container').setView(NASA_HQ_COORDS, 12)
+
+      // Add satellite layer
+      L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri',
+        maxZoom: 19
+      }).addTo(mapInstance)
+
+      // Create NASA HQ marker
+      const nasaIcon = L.divIcon({
+        html: `
+          <div style="
+            width: 24px; 
+            height: 24px; 
+            background: #1e40af; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: white; 
+            font-weight: bold; 
+            font-size: 10px;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          ">NASA</div>
+        `,
+        className: 'custom-div-icon',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      })
+
+      const nasaMarker = L.marker(NASA_HQ_COORDS, { icon: nasaIcon }).addTo(mapInstance)
+      nasaMarker.bindPopup(`
+        <div style="padding: 8px;">
+          <h3 style="font-weight: bold; color: #1e40af; margin: 0 0 4px 0;">NASA Headquarters</h3>
+          <p style="font-size: 12px; color: #666; margin: 0;">Washington D.C.</p>
+        </div>
+      `)
+
+      // Add air quality markers
+      sampleAirQualityData.forEach((data) => {
+        const aqiIcon = L.divIcon({
+          html: `
+            <div style="
+              width: 16px; 
+              height: 16px; 
+              background: ${getAQIColor(data.aqi)}; 
+              border-radius: 50%; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center; 
+              color: white; 
+              font-weight: bold; 
+              font-size: 6px;
+              border: 1px solid white;
+              box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+            ">${data.aqi}</div>
+          `,
+          className: 'custom-div-icon',
+          iconSize: [16, 16],
+          iconAnchor: [8, 8]
+        })
+
+        const aqiMarker = L.marker([data.lat, data.lng], { icon: aqiIcon }).addTo(mapInstance)
+        aqiMarker.bindPopup(`
+          <div style="padding: 6px;">
+            <p style="font-size: 11px; color: #666; margin: 0 0 2px 0;">AQI: <strong>${data.aqi}</strong></p>
+            <p style="font-size: 11px; color: #666; margin: 0;">${data.quality}</p>
+          </div>
+        `)
+      })
+
+      // Disable interactions for preview
+      mapInstance.dragging.disable()
+      mapInstance.touchZoom.disable()
+      mapInstance.doubleClickZoom.disable()
+      mapInstance.scrollWheelZoom.disable()
+      mapInstance.boxZoom.disable()
+      mapInstance.keyboard.disable()
+
+      // Store map instance for cleanup
+      ;(window as any).homeMapInstance = mapInstance
+    }
+
+    initMap()
+
+    // Cleanup
+    return () => {
+      if ((window as any).homeMapInstance) {
+        ;(window as any).homeMapInstance.remove()
+      }
+    }
+  }, [isClient])
+
   if (!isClient) {
     return (
       <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
@@ -43,43 +153,8 @@ const HomeMapPreview = () => {
 
   return (
     <div className="relative h-96 w-full rounded-lg overflow-hidden shadow-lg">
-      {/* Map placeholder with NASA HQ info */}
-      <div className="h-full w-full bg-gradient-to-br from-blue-50 to-indigo-100 relative overflow-hidden">
-        {/* Background pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-10 left-10 w-24 h-24 bg-blue-200 rounded-full"></div>
-          <div className="absolute top-20 right-16 w-16 h-16 bg-indigo-200 rounded-full"></div>
-          <div className="absolute bottom-16 left-1/4 w-12 h-12 bg-purple-200 rounded-full"></div>
-        </div>
-
-        {/* NASA HQ Marker */}
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-          <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center shadow-lg">
-            <span className="text-white font-bold text-sm">NASA</span>
-          </div>
-          <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 bg-white rounded-lg shadow-lg p-2 text-center">
-            <p className="text-xs font-semibold text-gray-900">NASA HQ</p>
-            <p className="text-xs text-gray-600">Washington D.C.</p>
-          </div>
-        </div>
-
-        {/* Sample Air Quality Markers */}
-        <div className="absolute top-1/3 left-1/3">
-          <div className="w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
-            <span className="text-white text-xs font-bold">52</span>
-          </div>
-        </div>
-        <div className="absolute top-1/4 right-1/3">
-          <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
-            <span className="text-white text-xs font-bold">38</span>
-          </div>
-        </div>
-        <div className="absolute bottom-1/3 left-1/4">
-          <div className="w-4 h-4 bg-yellow-500 rounded-full flex items-center justify-center shadow-lg">
-            <span className="text-white text-xs font-bold">65</span>
-          </div>
-        </div>
-      </div>
+      {/* Leaflet Map Container */}
+      <div id="home-map-container" className="h-full w-full"></div>
 
       {/* Overlay with CTA */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"></div>
