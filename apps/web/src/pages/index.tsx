@@ -50,9 +50,17 @@ export default function Home() {
                 <Link href="#data" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
                   Data Sources
                 </Link>
+
               </nav>
               <Link href="/map" className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
                 Explore Map
+              </Link>
+            </div>
+
+            {/* Mobile menu button */}
+            <div className="md:hidden flex items-center space-x-4">
+              <Link href="/map" className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm">
+                Map
               </Link>
             </div>
           </div>
@@ -140,6 +148,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+
     </div>
   )
 }
