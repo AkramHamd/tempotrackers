@@ -19,7 +19,7 @@ app.add_middleware(
 )
 
 # Load the model
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "SO2 model.pkl")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "SO2_model.pkl")
 try:
     model = joblib.load(MODEL_PATH)
 except Exception as e:

@@ -15,6 +15,7 @@ const DC_AREA_COORDS = [38.9072, -77.0369] as [number, number]
 
 export default function FullInteractiveMap() {
   const mapRef = useRef<any>(null)
+  const updateTimerRef = useRef<NodeJS.Timeout | null>(null)
   const [currentLayer, setCurrentLayer] = useState('satellite')
   const [isControlPanelOpen, setIsControlPanelOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -72,27 +73,32 @@ export default function FullInteractiveMap() {
           maxZoom: 18
         }).setView(DC_AREA_COORDS, currentZoom)
 
-        // Add event listeners for zoom and move
-        instance.on('zoomend', () => {
-          setCurrentZoom(instance.getZoom());
+        // Add event listeners for zoom and move with debounce
+        const updateMapState = () => {
+          const zoom = instance.getZoom();
           const bounds = instance.getBounds();
+          
+          setCurrentZoom(zoom);
           setMapBounds({
             north: bounds.getNorth(),
             south: bounds.getSouth(),
             east: bounds.getEast(),
             west: bounds.getWest()
           });
-        });
+        };
 
-        instance.on('moveend', () => {
-          const bounds = instance.getBounds();
-          setMapBounds({
-            north: bounds.getNorth(),
-            south: bounds.getSouth(),
-            east: bounds.getEast(),
-            west: bounds.getWest()
-          });
-        });
+        const debouncedUpdate = () => {
+          if (updateTimerRef.current) {
+            clearTimeout(updateTimerRef.current);
+          }
+          updateTimerRef.current = setTimeout(updateMapState, 300);
+        };
+
+        instance.on('zoomend', debouncedUpdate);
+        instance.on('moveend', debouncedUpdate);
+
+        // Initial state
+        updateMapState();
 
         // Wait for map to be ready
         instance.whenReady(() => {
@@ -237,6 +243,10 @@ export default function FullInteractiveMap() {
     return () => {
       if (retryTimer) {
         clearTimeout(retryTimer);
+      }
+      if (updateTimerRef.current) {
+        clearTimeout(updateTimerRef.current);
+        updateTimerRef.current = null;
       }
       if (mapRef.current) {
         mapRef.current.remove()
