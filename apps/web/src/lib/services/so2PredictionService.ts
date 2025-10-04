@@ -28,6 +28,9 @@ export interface PredictionResponse {
 class SO2PredictionService {
   private apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+  // Cache predictions to avoid unnecessary recalculations
+  private predictionCache: { [key: string]: PredictionResponse } = {};
+
   async getPredictions(
     latitude: number,
     longitude: number,
@@ -37,13 +40,24 @@ class SO2PredictionService {
   ): Promise<PredictionResponse> {
     try {
       const formattedDate = format(date, 'yyyy-MM-dd');
+      const cacheKey = `${latitude},${longitude},${formattedDate}`;
       
-      // For development, return mock data immediately
-      // This will be replaced with actual API call when backend is ready
+      // Return cached data if available
+      if (this.predictionCache[cacheKey]) {
+        return this.predictionCache[cacheKey];
+      }
+      
+      // Generate new predictions
+      const predictions = this.getMockPredictions(latitude, longitude, formattedDate);
+      
+      // Cache the predictions
+      this.predictionCache[cacheKey] = predictions;
+      
+      // Simulate network delay only for first load
       return new Promise((resolve) => {
         setTimeout(() => {
-          resolve(this.getMockPredictions(latitude, longitude, formattedDate));
-        }, 500); // Simulate network delay
+          resolve(predictions);
+        }, 1000);
       });
     } catch (error) {
       console.error('Error fetching SO2 predictions:', error);

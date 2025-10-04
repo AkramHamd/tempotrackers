@@ -29,11 +29,9 @@ export default function FullInteractiveMap() {
   const [isMapInitialized, setIsMapInitialized] = useState(false)
   const [showSO2Layer, setShowSO2Layer] = useState(false)
 
-  // Initialize map with retry mechanism
+  // Initialize map once
   useEffect(() => {
-    let retryCount = 0;
-    const maxRetries = 10;
-    const retryInterval = 100; // ms
+    if (mapRef.current) return; // Skip if map is already initialized
 
     const initializeMap = async () => {
       try {
@@ -46,15 +44,8 @@ export default function FullInteractiveMap() {
         // Check for container
         const container = document.getElementById('map-container')
         if (!container) {
-          retryCount++
-          if (retryCount < maxRetries) {
-            console.log(`Map container not found, retrying (${retryCount}/${maxRetries})...`)
-            setTimeout(initializeMap, retryInterval)
-            return
-          } else {
-            console.error('Map container not found after maximum retries')
-            return
-          }
+          console.error('Map container not found')
+          return
         }
 
         // Import Leaflet
@@ -245,11 +236,11 @@ export default function FullInteractiveMap() {
         setIsMapInitialized(false)
       }
     }
-  }, [airQualityData, getAQIColor, so2Data, getSO2Color, showSO2Layer])
+  }, [])
 
-  // Update markers when data changes
+  // Update markers when data or visibility changes
   useEffect(() => {
-    if (!isMapInitialized || !mapRef.current) return;
+    if (!isMapInitialized || !mapRef.current || !airQualityData || !so2Data) return;
 
     const updateMarkers = async () => {
       const L = (await import('leaflet')).default;
