@@ -5,6 +5,7 @@ import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useAirQualityData, useAQIColor } from '../../lib/hooks/useData'
 import ControlPanel from '../control/ControlPanel'
+import CitySearch from './CitySearch'
 
 // NASA Headquarters coordinates (Washington D.C.)
 const NASA_HQ_COORDS = [38.8833, -77.0167] as [number, number]
@@ -227,6 +228,21 @@ export default function FullInteractiveMap() {
     }
   }
 
+  // Función para centrar el mapa en una ubicación buscada
+  const handleCitySelect = (lat: number, lng: number) => {
+    if (!isMapInitialized || !mapRef.current) return;
+    
+    try {
+      // Centrar mapa en la ubicación seleccionada con animación
+      mapRef.current.flyTo([lat, lng], 12, {
+        animate: true,
+        duration: 1.5
+      });
+    } catch (error) {
+      console.error('Error al centrar el mapa:', error);
+    }
+  };
+
   if (loading) {
     return (
       <div className="h-screen bg-gray-100 flex items-center justify-center">
@@ -270,6 +286,9 @@ export default function FullInteractiveMap() {
         id="map-container" 
         className="h-full w-full"
       ></div>
+
+      {/* City Search Component */}
+      <CitySearch onCitySelect={handleCitySelect} />
 
       {/* Map Info Panel - Hidden when control panel is open */}
       {!isControlPanelOpen && (
