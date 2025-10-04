@@ -3,7 +3,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 
 // Dynamically import the map preview component to avoid SSR issues
-const HomeMapPreview = dynamic(() => import('@/components/map/HomeMapPreview'), {
+const HomeMapPreview = dynamic(() => import('../components/map/HomeMapPreview'), {
   ssr: false,
   loading: () => (
     <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
