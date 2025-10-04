@@ -1,4 +1,3 @@
-// Main home page with TempoTrackers branding and map preview
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 
@@ -38,22 +37,22 @@ export default function Home() {
             
             <div className="hidden md:flex items-center space-x-6">
               <nav className="flex space-x-8">
-                <Link href="#about" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+                <a href="#about" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
                   About
-                </Link>
-                <Link href="#features" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+                </a>
+                <a href="#features" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
                   Features
-                </Link>
-                <Link href="/map" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
-                  Interactive Map
-                </Link>
-                <Link href="#data" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+                </a>
+                <a href="#data" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
                   Data Sources
+                </a>
+                <Link href="/map" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+                  Map
                 </Link>
               </nav>
-              <Link href="/map" className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
-                Explore Map
-              </Link>
+              <button className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                Get Started
+              </button>
             </div>
           </div>
         </div>
@@ -72,29 +71,30 @@ export default function Home() {
             and weather data to protect public health.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/map" className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center">
+            <Link href="/map" className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-block">
               Explore the Map
             </Link>
-            <Link href="#features" className="border border-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-center">
+            <button className="border border-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors">
               Learn More
-            </Link>
+            </button>
           </div>
         </div>
       </section>
 
-      {/* Map Preview Section */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
+      {/* Interactive Map Preview Section */}
+      <section className="relative py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h3 className="text-3xl font-bold text-gray-900 mb-4">Interactive Air Quality Monitoring</h3>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Explore real-time air quality data around NASA Headquarters with our interactive map featuring 
-              satellite imagery, street views, and live TEMPO data integration.
-            </p>
+            <h3 className="text-4xl font-bold text-gray-900 mb-4">Live Air Quality Map Preview</h3>
+            <p className="text-xl text-gray-600">See real-time air quality data around NASA HQ</p>
           </div>
-          
-          <div className="max-w-5xl mx-auto">
+          <div className="h-[500px] rounded-xl shadow-xl overflow-hidden border border-gray-200">
             <HomeMapPreview />
+          </div>
+          <div className="text-center mt-8">
+            <Link href="/map" className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors inline-block">
+              View Full Interactive Map
+            </Link>
           </div>
         </div>
       </section>
@@ -111,7 +111,7 @@ export default function Home() {
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-8 rounded-2xl">
               <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center mb-6">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0021 18.382V7.618a1 1 0-.553-.894L15 4m0 13V4m0 0L9 7" />
                 </svg>
               </div>
               <h4 className="text-xl font-semibold text-gray-900 mb-3">Real-time TEMPO Data</h4>
@@ -121,7 +121,7 @@ export default function Home() {
             <div className="bg-gradient-to-br from-green-50 to-green-100 p-8 rounded-2xl">
               <div className="w-12 h-12 bg-green-600 rounded-lg flex items-center justify-center mb-6">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0017.072 0l-.548.547A3.374 3.00014 18.469V19a2 2 011-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
               </div>
               <h4 className="text-xl font-semibold text-gray-900 mb-3">AI-Powered Forecasting</h4>
@@ -131,7 +131,7 @@ export default function Home() {
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-8 rounded-2xl">
               <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center mb-6">
                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 0 002.828 0L12.828 7H4.828zM4.828 17h8a2 2 0 002-2V9a2 2 0 00-2-2H4.828" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4.828 7l2.586 2.586a2 2 002.828 0L12.828 7H4.828zM4.828 17h8a2 2 002-2V9a2 2 00-2-2H4.828" />
                 </svg>
               </div>
               <h4 className="text-xl font-semibold text-gray-900 mb-3">Interactive Mapping</h4>
