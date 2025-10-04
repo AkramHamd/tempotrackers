@@ -21,13 +21,58 @@ export default function FullInteractiveMap() {
     setIsClient(true)
   }, [])
 
+  // Additional effect to ensure map loads after navigation
+  useEffect(() => {
+    if (!isClient) return
+
+    // Multiple attempts to ensure map loads after navigation
+    const attempts = [100, 300, 500, 1000] // Try at different intervals
+    
+    attempts.forEach((delay, index) => {
+      const timer = setTimeout(() => {
+        const mapContainer = document.getElementById('map-container')
+        if (mapContainer && !(window as any).mapInstance) {
+          console.log(`Triggering map initialization after navigation... (attempt ${index + 1})`)
+          // Force re-run of map initialization
+          const event = new CustomEvent('map-init-required')
+          window.dispatchEvent(event)
+        }
+      }, delay)
+
+      // Clean up timers
+      return () => clearTimeout(timer)
+    })
+  }, [isClient])
+
   // No resize handling needed - map container never changes size
 
   useEffect(() => {
     if (!isClient) return
 
     // Dynamically import Leaflet only on client side
+    let retryCount = 0
+    const maxRetries = 50 // Maximum 5 seconds of retries
+    
     const initMap = async () => {
+      // Check if map container exists
+      const mapContainer = document.getElementById('map-container')
+      if (!mapContainer) {
+        retryCount++
+        if (retryCount > maxRetries) {
+          console.error('Map container not found after maximum retries')
+          return
+        }
+        console.warn(`Map container not found, retrying... (${retryCount}/${maxRetries})`)
+        setTimeout(initMap, 100) // Retry after 100ms
+        return
+      }
+
+      // Check if map is already initialized
+      if ((window as any).mapInstance) {
+        console.log('Map already initialized, skipping...')
+        return
+      }
+
       const L = (await import('leaflet')).default
       
       // Fix for default markers
@@ -166,10 +211,21 @@ export default function FullInteractiveMap() {
 
     initMap()
 
+    // Add event listener for navigation-triggered initialization
+    const handleMapInitRequired = () => {
+      console.log('Map init required event received, retrying...')
+      initMap()
+    }
+    
+    window.addEventListener('map-init-required', handleMapInitRequired)
+
     // Cleanup
     return () => {
+      window.removeEventListener('map-init-required', handleMapInitRequired)
       if (map) {
         map.remove()
+        setMap(null)
+        ;(window as any).mapInstance = null
       }
     }
   }, [isClient, airQualityData, getAQIColor])
