@@ -29,8 +29,8 @@ export default function FullInteractiveMap() {
     const timer = setTimeout(() => {
       if ((window as any).mapInstance) {
         (window as any).mapInstance.invalidateSize()
-        // Force a redraw
-        (window as any).mapInstance._resetView()
+        // Force a redraw by refreshing the view
+        (window as any).mapInstance.setView((window as any).mapInstance.getCenter(), (window as any).mapInstance.getZoom())
       }
     }, 150)
 
