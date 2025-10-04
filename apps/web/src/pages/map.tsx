@@ -1,5 +1,10 @@
 // Dedicated Map Page with Full Functionality
-import FullInteractiveMap from '../components/map/FullInteractiveMap'
+import dynamic from 'next/dynamic'
+
+const FullInteractiveMap = dynamic(
+  () => import('../components/map/FullInteractiveMap'),
+  { ssr: false }
+)
 
 export default function MapPage() {
   return (
