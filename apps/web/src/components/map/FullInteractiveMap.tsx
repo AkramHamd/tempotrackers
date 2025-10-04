@@ -21,6 +21,44 @@ export default function FullInteractiveMap() {
     setIsClient(true)
   }, [])
 
+  // Handle map resize when control panel opens/closes
+  useEffect(() => {
+    if (!isClient || !map) return
+
+    // Small delay to ensure DOM has updated
+    const timer = setTimeout(() => {
+      if ((window as any).mapInstance) {
+        (window as any).mapInstance.invalidateSize()
+        // Force a redraw
+        (window as any).mapInstance._resetView()
+      }
+    }, 150)
+
+    return () => clearTimeout(timer)
+  }, [isControlPanelOpen, isClient, map])
+
+  // Add ResizeObserver to handle container size changes
+  useEffect(() => {
+    if (!isClient) return
+
+    const mapContainer = document.getElementById('map-container')
+    if (!mapContainer) return
+
+    const resizeObserver = new ResizeObserver(() => {
+      if ((window as any).mapInstance) {
+        setTimeout(() => {
+          (window as any).mapInstance.invalidateSize()
+        }, 50)
+      }
+    })
+
+    resizeObserver.observe(mapContainer)
+
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [isClient])
+
   useEffect(() => {
     if (!isClient) return
 
@@ -39,6 +77,9 @@ export default function FullInteractiveMap() {
       // Create map
       const mapInstance = L.map('map-container').setView(NASA_HQ_COORDS, 13)
       setMap(mapInstance)
+      
+      // Store map instance globally for resize access
+      ;(window as any).mapInstance = mapInstance
 
       // Add satellite layer by default
       const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
@@ -150,7 +191,6 @@ export default function FullInteractiveMap() {
 
       // Store layers globally for switching
       ;(window as any).mapLayers = layers
-      ;(window as any).mapInstance = mapInstance
     }
 
     initMap()
