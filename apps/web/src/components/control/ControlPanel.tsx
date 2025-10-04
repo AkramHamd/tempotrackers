@@ -3,6 +3,7 @@
 
 import { useState, useEffect } from 'react'
 import { useAirQualityData, useWeatherData, usePredictions } from '../../lib/hooks/useData'
+import ChatWidget from '../chat/ChatWidget'
 
 interface ControlPanelProps {
   isOpen: boolean
@@ -16,6 +17,7 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
   
   const [activeSection, setActiveSection] = useState('overview')
   const [isMinimized, setIsMinimized] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)
 
   // Calculate average AQI
   const averageAQI = airQualityData?.length 
@@ -45,6 +47,7 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
     { id: 'data', name: 'Data Sources', icon: '📡' },
     { id: 'predictions', name: 'Predictions', icon: '🔮' },
     { id: 'alerts', name: 'Alerts', icon: '⚠️' },
+    { id: 'chat', name: 'AI Chat', icon: '💬' },
     { id: 'settings', name: 'Settings', icon: '⚙️' },
     { id: 'analytics', name: 'Analytics', icon: '📈' }
   ]
@@ -400,6 +403,83 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
                   </p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeSection === 'chat' && (
+            <div className="space-y-4 h-full flex flex-col">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">AI Chat Assistant</h3>
+                <button
+                  onClick={() => setIsChatOpen(!isChatOpen)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm transition-colors"
+                >
+                  {isChatOpen ? 'Close Chat' : 'Open Chat'}
+                </button>
+              </div>
+              
+              {!isChatOpen ? (
+                <>
+                  <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center space-x-3 mb-3">
+                      <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center">
+                        <span className="text-white text-sm font-bold">AI</span>
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-gray-900">TempoTrackers AI</h4>
+                        <p className="text-sm text-gray-600">Powered by Gemini</p>
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm text-gray-700 mb-3">
+                      Obtén respuestas instantáneas sobre calidad del aire, datos del satélite TEMPO de la NASA, 
+                      interpretación de métricas ambientales y recomendaciones personalizadas.
+                    </p>
+                    
+                    <div className="grid grid-cols-1 gap-2 text-xs">
+                      <div className="flex items-center text-gray-600">
+                        <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
+                        Análisis de datos en tiempo real
+                      </div>
+                      <div className="flex items-center text-gray-600">
+                        <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
+                        Pronósticos de calidad del aire
+                      </div>
+                      <div className="flex items-center text-gray-600">
+                        <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
+                        Recomendaciones de salud
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="text-center py-4">
+                    <div className="text-4xl mb-2">💬</div>
+                    <p className="text-sm text-gray-600 mb-3">
+                      Haz clic en "Open Chat" para comenzar una conversación
+                    </p>
+                    <div className="bg-gray-50 rounded-lg p-3 text-left">
+                      <p className="text-xs text-gray-500 mb-1 font-medium">Ejemplos de preguntas:</p>
+                      <ul className="text-xs text-gray-600 space-y-1">
+                        <li>• ¿Cuál es la calidad del aire actual?</li>
+                        <li>• ¿Qué significan los datos TEMPO?</li>
+                        <li>• ¿Es seguro hacer ejercicio al aire libre?</li>
+                      </ul>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 min-h-0">
+                  <ChatWidget 
+                    isOpen={true} 
+                    onToggle={() => setIsChatOpen(false)} 
+                    showFloatingButton={false} 
+                    embedded={true}
+                    currentAQI={averageAQI}
+                    airQualityData={airQualityData}
+                    weatherData={weatherData || undefined}
+                  />
+                </div>
+              )}
             </div>
           )}
 
