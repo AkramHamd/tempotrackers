@@ -125,7 +125,7 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/ - Keep this commented as we need the src/lib directory
 lib64/
 parts/
 sdist/

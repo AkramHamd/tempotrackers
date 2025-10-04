@@ -49,9 +49,16 @@ export default function FullInteractiveMap() {
   useEffect(() => {
     if (!isClient) return
 
+    // Cleanup any existing map instance first
+    if ((window as any).mapInstance) {
+      (window as any).mapInstance.remove()
+      ;(window as any).mapInstance = null
+    }
+
     // Dynamically import Leaflet only on client side
     let retryCount = 0
     const maxRetries = 50 // Maximum 5 seconds of retries
+    let initTimer: NodeJS.Timeout | null = null
     
     const initMap = async () => {
       // Check if map container exists
@@ -63,16 +70,11 @@ export default function FullInteractiveMap() {
           return
         }
         console.warn(`Map container not found, retrying... (${retryCount}/${maxRetries})`)
-        setTimeout(initMap, 100) // Retry after 100ms
+        initTimer = setTimeout(initMap, 100) // Retry after 100ms
         return
       }
 
-      // Check if map is already initialized
-      if ((window as any).mapInstance) {
-        console.log('Map already initialized, skipping...')
-        return
-      }
-
+      // Import Leaflet
       const L = (await import('leaflet')).default
       
       // Fix for default markers
@@ -222,9 +224,15 @@ export default function FullInteractiveMap() {
     // Cleanup
     return () => {
       window.removeEventListener('map-init-required', handleMapInitRequired)
+      if (initTimer) {
+        clearTimeout(initTimer)
+      }
       if (map) {
         map.remove()
         setMap(null)
+      }
+      if ((window as any).mapInstance) {
+        (window as any).mapInstance.remove()
         ;(window as any).mapInstance = null
       }
     }
