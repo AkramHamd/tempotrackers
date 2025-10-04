@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useAirQualityData, useAQIColor } from '@/lib/hooks/useData'
+import { useAirQualityData, useAQIColor } from '../../lib/hooks/useData'
 
 // NASA Headquarters coordinates (Washington D.C.)
 const NASA_HQ_COORDS = [38.8833, -77.0167] as [number, number]
