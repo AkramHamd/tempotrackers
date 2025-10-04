@@ -27,10 +27,17 @@ export default function FullInteractiveMap() {
 
     // Small delay to ensure DOM has updated
     const timer = setTimeout(() => {
-      if ((window as any).mapInstance) {
-        (window as any).mapInstance.invalidateSize()
-        // Force a redraw by refreshing the view
-        (window as any).mapInstance.setView((window as any).mapInstance.getCenter(), (window as any).mapInstance.getZoom())
+      const mapInstance = (window as any).mapInstance
+      if (mapInstance && typeof mapInstance.invalidateSize === 'function') {
+        try {
+          mapInstance.invalidateSize()
+          // Force a redraw by refreshing the view
+          if (typeof mapInstance.getCenter === 'function' && typeof mapInstance.getZoom === 'function' && typeof mapInstance.setView === 'function') {
+            mapInstance.setView(mapInstance.getCenter(), mapInstance.getZoom())
+          }
+        } catch (error) {
+          console.warn('Map resize error:', error)
+        }
       }
     }, 150)
 
@@ -45,9 +52,14 @@ export default function FullInteractiveMap() {
     if (!mapContainer) return
 
     const resizeObserver = new ResizeObserver(() => {
-      if ((window as any).mapInstance) {
+      const mapInstance = (window as any).mapInstance
+      if (mapInstance && typeof mapInstance.invalidateSize === 'function') {
         setTimeout(() => {
-          (window as any).mapInstance.invalidateSize()
+          try {
+            mapInstance.invalidateSize()
+          } catch (error) {
+            console.warn('Map resize observer error:', error)
+          }
         }, 50)
       }
     })
