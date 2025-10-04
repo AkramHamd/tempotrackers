@@ -29,8 +29,10 @@ export default function FullInteractiveMap() {
   const [isMapInitialized, setIsMapInitialized] = useState(false)
   const [showSO2Layer, setShowSO2Layer] = useState(false)
 
-  // Initialize map only once when component mounts
+  // Initialize map only once when component mounts and data is ready
   useEffect(() => {
+    if (!airQualityData || !so2Data) return; // Wait for data to be ready
+
     const initializeMap = async () => {
       try {
         // Clean up existing map if any
@@ -291,16 +293,17 @@ export default function FullInteractiveMap() {
     }
   };
 
-  const loading = aqiLoading || so2Loading;
+  // Only show loading state on initial load
+  const initialLoading = !isMapInitialized && (aqiLoading || so2Loading);
   const error = aqiError || so2Error;
 
-  if (loading) {
+  if (initialLoading) {
     return (
       <div className="h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading TempoTrackers Map...</p>
-          {loading && <p className="text-sm text-gray-500 mt-2">Fetching air quality data...</p>}
+          {(aqiLoading || so2Loading) && <p className="text-sm text-gray-500 mt-2">Fetching air quality data...</p>}
         </div>
       </div>
     )

@@ -37,33 +37,17 @@ class SO2PredictionService {
   ): Promise<PredictionResponse> {
     try {
       const formattedDate = format(date, 'yyyy-MM-dd');
-      const response = await fetch(`${this.apiBaseUrl}/predict`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          latitude,
-          longitude,
-          date: formattedDate,
-          radius_km: radiusKm,
-          num_points: numPoints,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch SO2 predictions');
-      }
-
-      const data = await response.json();
       
-      // For now, return mock data that matches the structure we expect from the API
-      // This will be replaced with actual API data when backend is ready
-      return this.getMockPredictions(latitude, longitude, formattedDate);
+      // For development, return mock data immediately
+      // This will be replaced with actual API call when backend is ready
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(this.getMockPredictions(latitude, longitude, formattedDate));
+        }, 500); // Simulate network delay
+      });
     } catch (error) {
       console.error('Error fetching SO2 predictions:', error);
-      // Return mock data in case of error
-      return this.getMockPredictions(latitude, longitude, format(date, 'yyyy-MM-dd'));
+      throw error;
     }
   }
 
