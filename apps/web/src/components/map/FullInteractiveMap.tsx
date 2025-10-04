@@ -30,16 +30,32 @@ export default function FullInteractiveMap() {
       const mapInstance = (window as any).mapInstance
       if (mapInstance && typeof mapInstance.invalidateSize === 'function') {
         try {
+          // Force complete map refresh
           mapInstance.invalidateSize()
-          // Force a redraw by refreshing the view
+          
+          // Redraw all layers
+          mapInstance.eachLayer((layer: any) => {
+            if (layer.redraw && typeof layer.redraw === 'function') {
+              layer.redraw()
+            }
+          })
+          
+          // Force view refresh
           if (typeof mapInstance.getCenter === 'function' && typeof mapInstance.getZoom === 'function' && typeof mapInstance.setView === 'function') {
-            mapInstance.setView(mapInstance.getCenter(), mapInstance.getZoom())
+            const center = mapInstance.getCenter()
+            const zoom = mapInstance.getZoom()
+            mapInstance.setView(center, zoom, { animate: false })
+          }
+          
+          // Trigger tile refresh
+          if (mapInstance._resetView && typeof mapInstance._resetView === 'function') {
+            mapInstance._resetView()
           }
         } catch (error) {
           console.warn('Map resize error:', error)
         }
       }
-    }, 150)
+    }, 200)
 
     return () => clearTimeout(timer)
   }, [isControlPanelOpen, isClient, map])
@@ -57,10 +73,16 @@ export default function FullInteractiveMap() {
         setTimeout(() => {
           try {
             mapInstance.invalidateSize()
+            // Force tile layer refresh
+            mapInstance.eachLayer((layer: any) => {
+              if (layer.redraw && typeof layer.redraw === 'function') {
+                layer.redraw()
+              }
+            })
           } catch (error) {
             console.warn('Map resize observer error:', error)
           }
-        }, 50)
+        }, 100)
       }
     })
 
@@ -273,6 +295,7 @@ export default function FullInteractiveMap() {
       
       {/* Leaflet Map Container */}
       <div 
+        key={`map-${isControlPanelOpen ? 'open' : 'closed'}`}
         id="map-container" 
         className={`h-full transition-all duration-300 ${
           isControlPanelOpen ? 'ml-80' : 'ml-0'
