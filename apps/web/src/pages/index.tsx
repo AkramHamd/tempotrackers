@@ -1,15 +1,15 @@
-// Main home page with TempoTrackers branding and interactive map
+// Main home page with TempoTrackers branding and map preview
 import dynamic from 'next/dynamic'
-import { Suspense } from 'react'
+import Link from 'next/link'
 
-// Dynamically import the map component to avoid SSR issues
-const InteractiveMap = dynamic(() => import('@/components/map/InteractiveMap'), {
+// Dynamically import the map preview component to avoid SSR issues
+const HomeMapPreview = dynamic(() => import('@/components/map/HomeMapPreview'), {
   ssr: false,
   loading: () => (
-    <div className="h-screen bg-gray-100 flex items-center justify-center">
+    <div className="h-96 bg-gray-100 rounded-lg flex items-center justify-center">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600">Loading TempoTrackers Map...</p>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+        <p className="text-gray-600 text-sm">Loading Map Preview...</p>
       </div>
     </div>
   )
@@ -38,19 +38,22 @@ export default function Home() {
             
             <div className="hidden md:flex items-center space-x-6">
               <nav className="flex space-x-8">
-                <a href="#about" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+                <Link href="#about" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
                   About
-                </a>
-                <a href="#features" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+                </Link>
+                <Link href="#features" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
                   Features
-                </a>
-                <a href="#data" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+                </Link>
+                <Link href="/map" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
+                  Interactive Map
+                </Link>
+                <Link href="#data" className="text-gray-700 hover:text-blue-600 font-medium transition-colors">
                   Data Sources
-                </a>
+                </Link>
               </nav>
-              <button className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
-                Get Started
-              </button>
+              <Link href="/map" className="bg-blue-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors">
+                Explore Map
+              </Link>
             </div>
           </div>
         </div>
@@ -69,29 +72,31 @@ export default function Home() {
             and weather data to protect public health.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors">
+            <Link href="/map" className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors text-center">
               Explore the Map
-            </button>
-            <button className="border border-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors">
+            </Link>
+            <Link href="#features" className="border border-gray-300 text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-center">
               Learn More
-            </button>
+            </Link>
           </div>
         </div>
       </section>
 
-      {/* Interactive Map Section */}
-      <section className="relative">
-        <div className="absolute inset-0 bg-gradient-to-t from-white/80 to-transparent z-10 pointer-events-none"></div>
-        <Suspense fallback={
-          <div className="h-screen bg-gray-100 flex items-center justify-center">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">Loading Interactive Map...</p>
-            </div>
+      {/* Map Preview Section */}
+      <section className="py-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-12">
+            <h3 className="text-3xl font-bold text-gray-900 mb-4">Interactive Air Quality Monitoring</h3>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Explore real-time air quality data around NASA Headquarters with our interactive map featuring 
+              satellite imagery, street views, and live TEMPO data integration.
+            </p>
           </div>
-        }>
-          <InteractiveMap />
-        </Suspense>
+          
+          <div className="max-w-5xl mx-auto">
+            <HomeMapPreview />
+          </div>
+        </div>
       </section>
 
       {/* Features Section */}
