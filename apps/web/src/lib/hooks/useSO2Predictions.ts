@@ -1,70 +1,61 @@
-import { useState, useEffect, useCallback } from 'react';
-import { so2PredictionService, type PredictionResponse } from '../services/so2PredictionService';
+import { useState, useEffect } from 'react';
+import { SO2PredictionService } from '../services/so2PredictionService';
 
-interface UseSO2PredictionsProps {
+interface ViewBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
+interface UseSO2PredictionsParams {
   latitude: number;
   longitude: number;
-  date?: Date;
-  radiusKm?: number;
-  numPoints?: number;
-  refreshInterval?: number;
+  zoomLevel: number;
+  bounds: ViewBounds;
+  selectedDate?: Date;
 }
 
 export function useSO2Predictions({
   latitude,
   longitude,
-  date = new Date(),
-  radiusKm = 50,
-  numPoints = 100,
-  refreshInterval = 300000 // 5 minutes default
-}: UseSO2PredictionsProps) {
-  const [data, setData] = useState<PredictionResponse | null>(null);
+  zoomLevel,
+  bounds,
+  selectedDate = new Date()
+}: UseSO2PredictionsParams) {
+  const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const predictions = await so2PredictionService.getPredictions(
-        latitude,
-        longitude,
-        date,
-        radiusKm,
-        numPoints
-      );
-      setData(predictions);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch SO2 predictions');
-      console.error('Error fetching SO2 predictions:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [latitude, longitude, date, radiusKm, numPoints]);
-
   useEffect(() => {
-    fetchData();
+    const fetchPredictions = async () => {
+      try {
+        setLoading(true);
+        const service = SO2PredictionService.getInstance();
+        const predictions = service.getPredictions({
+          latitude,
+          longitude,
+          date: selectedDate.toISOString().split('T')[0],
+          zoomLevel,
+          bounds
+        });
+        setData(predictions);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching SO2 predictions:', err);
+        setError('Failed to fetch SO2 predictions');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    if (refreshInterval > 0) {
-      const interval = setInterval(fetchData, refreshInterval);
-      return () => clearInterval(interval);
-    }
-  }, [fetchData, refreshInterval]);
+    fetchPredictions();
+  }, [latitude, longitude, zoomLevel, bounds, selectedDate]);
 
-  const getSO2Color = useCallback((value: number) => {
-    return so2PredictionService.getSO2Color(value);
-  }, []);
-
-  const getSO2Quality = useCallback((value: number) => {
-    return so2PredictionService.getSO2Quality(value);
-  }, []);
-
-  return {
-    data,
-    loading,
-    error,
-    refetch: fetchData,
-    getSO2Color,
-    getSO2Quality
+  const getSO2Color = (value: number) => {
+    const service = SO2PredictionService.getInstance();
+    return service.getColorForValue(value);
   };
+
+  return { data, loading, error, getSO2Color };
 }

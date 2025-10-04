@@ -1,102 +1,92 @@
-import { format } from 'date-fns';
+// SO2 Prediction Service with dynamic circle generation
 
-export interface SO2Prediction {
-  latitude: number;
-  longitude: number;
-  value: number;
-  date: string;
-}
-
-export interface CirclePoint {
+interface CirclePoint {
   latitude: number;
   longitude: number;
   prediction: number;
 }
 
-export interface PredictionResponse {
+interface PredictionResponse {
   centerPoint: {
     latitude: number;
     longitude: number;
     date: string;
   };
   predictions: CirclePoint[];
-  averageSO2: number;
-  maxSO2: number;
-  minSO2: number;
+  averagePrediction: number;
 }
 
-class SO2PredictionService {
-  private apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+interface ViewBounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
 
-  // Cache predictions to avoid unnecessary recalculations
-  private predictionCache: { [key: string]: PredictionResponse } = {};
+interface PredictionParams {
+  latitude: number;
+  longitude: number;
+  date: string;
+  zoomLevel: number;
+  bounds: ViewBounds;
+}
 
-  async getPredictions(
-    latitude: number,
-    longitude: number,
-    date: Date = new Date(),
-    radiusKm: number = 50,
-    numPoints: number = 100
-  ): Promise<PredictionResponse> {
-    try {
-      const formattedDate = format(date, 'yyyy-MM-dd');
-      const cacheKey = `${latitude},${longitude},${formattedDate}`;
-      
-      // Return cached data if available
-      if (this.predictionCache[cacheKey]) {
-        return this.predictionCache[cacheKey];
-      }
-      
-      // Generate new predictions
-      const predictions = this.getMockPredictions(latitude, longitude, formattedDate);
-      
-      // Cache the predictions
-      this.predictionCache[cacheKey] = predictions;
-      
-      // Simulate network delay only for first load
-      return new Promise((resolve) => {
-        setTimeout(() => {
-          resolve(predictions);
-        }, 1000);
-      });
-    } catch (error) {
-      console.error('Error fetching SO2 predictions:', error);
-      throw error;
+const ZOOM_THRESHOLDS = {
+  CITY: 10,
+  DISTRICT: 13,
+  NEIGHBORHOOD: 15
+};
+
+const CIRCLE_COUNTS = {
+  CITY: 1,
+  DISTRICT: 9,
+  NEIGHBORHOOD: 25
+};
+
+export class SO2PredictionService {
+  private static instance: SO2PredictionService;
+
+  private constructor() {}
+
+  static getInstance(): SO2PredictionService {
+    if (!SO2PredictionService.instance) {
+      SO2PredictionService.instance = new SO2PredictionService();
     }
+    return SO2PredictionService.instance;
   }
 
-  private getMockPredictions(
-    latitude: number,
-    longitude: number,
-    date: string
-  ): PredictionResponse {
-    // Generate fewer points in a smaller radius for better performance
-    // Fixed points in a grid pattern around the center
-    const predictions: CirclePoint[] = [];
-    const gridSize = 3; // 3x3 grid
-    const spacing = 5 / 111.32; // 5km total coverage
+  getPredictions({
+    latitude,
+    longitude,
+    date,
+    zoomLevel,
+    bounds
+  }: PredictionParams): PredictionResponse {
+    // Calculate area size in km²
+    const areaWidth = this.calculateDistance(bounds.north, bounds.west, bounds.north, bounds.east);
+    const areaHeight = this.calculateDistance(bounds.north, bounds.west, bounds.south, bounds.west);
+    const areaSize = areaWidth * areaHeight;
 
-    for (let i = -1; i <= 1; i++) {
-      for (let j = -1; j <= 1; j++) {
-        const lat = latitude + (spacing * i) / gridSize;
-        const lon = longitude + (spacing * j) / gridSize;
-        
-        // Fixed SO2 values based on distance from center
-        const distanceFromCenter = Math.sqrt(Math.pow(i, 2) + Math.pow(j, 2)) / Math.sqrt(2);
-        const prediction = Math.max(5, 30 * (1 - distanceFromCenter));
-        
-        predictions.push({
-          latitude: lat,
-          longitude: lon,
-          prediction
-        });
-      }
+    // Determine circle count based on zoom level
+    let circleCount: number;
+    if (zoomLevel < ZOOM_THRESHOLDS.CITY) {
+      circleCount = CIRCLE_COUNTS.CITY;
+    } else if (zoomLevel < ZOOM_THRESHOLDS.DISTRICT) {
+      circleCount = CIRCLE_COUNTS.DISTRICT;
+    } else {
+      circleCount = CIRCLE_COUNTS.NEIGHBORHOOD;
     }
 
-    const so2Values = predictions.map(p => p.prediction);
-    const averageSO2 = so2Values.reduce((a, b) => a + b, 0) / so2Values.length;
-    const maxSO2 = Math.max(...so2Values);
-    const minSO2 = Math.min(...so2Values);
+    // Generate grid points
+    const predictions: CirclePoint[] = this.generateGridPoints(bounds, circleCount);
+
+    // Calculate predictions for each point
+    predictions.forEach(point => {
+      point.prediction = this.calculatePrediction(point, date, areaSize);
+    });
+
+    // Calculate average prediction
+    const averagePrediction = predictions.reduce((sum, p) => sum + p.prediction, 0) / predictions.length;
 
     return {
       centerPoint: {
@@ -105,30 +95,65 @@ class SO2PredictionService {
         date
       },
       predictions,
-      averageSO2,
-      maxSO2,
-      minSO2
+      averagePrediction
     };
   }
 
-  getSO2Color(value: number): string {
-    // Color scale for SO2 concentrations (ppb)
-    if (value <= 10) return '#00e400'; // Good
-    if (value <= 20) return '#ffff00'; // Moderate
-    if (value <= 30) return '#ff7e00'; // Unhealthy for Sensitive Groups
-    if (value <= 40) return '#ff0000'; // Unhealthy
-    if (value <= 50) return '#8f3f97'; // Very Unhealthy
-    return '#7e0023'; // Hazardous
+  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Earth's radius in km
+    const dLat = this.toRad(lat2 - lat1);
+    const dLon = this.toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
   }
 
-  getSO2Quality(value: number): string {
-    if (value <= 10) return 'Good';
-    if (value <= 20) return 'Moderate';
-    if (value <= 30) return 'Unhealthy for Sensitive Groups';
-    if (value <= 40) return 'Unhealthy';
-    if (value <= 50) return 'Very Unhealthy';
-    return 'Hazardous';
+  private toRad(degrees: number): number {
+    return degrees * Math.PI / 180;
+  }
+
+  private generateGridPoints(bounds: ViewBounds, count: number): CirclePoint[] {
+    const points: CirclePoint[] = [];
+    const rows = Math.floor(Math.sqrt(count));
+    const cols = Math.ceil(count / rows);
+
+    const latStep = (bounds.north - bounds.south) / rows;
+    const lonStep = (bounds.east - bounds.west) / cols;
+
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < cols; j++) {
+        if (points.length < count) {
+          points.push({
+            latitude: bounds.south + (i + 0.5) * latStep,
+            longitude: bounds.west + (j + 0.5) * lonStep,
+            prediction: 0 // Will be calculated later
+          });
+        }
+      }
+    }
+
+    return points;
+  }
+
+  private calculatePrediction(point: CirclePoint, date: string, areaSize: number): number {
+    // Mock prediction calculation based on location and date
+    // In a real implementation, this would use the ML model
+    const baseValue = 15; // Base SO2 value
+    const dateEffect = new Date(date).getDay() / 7 * 5; // Day of week effect
+    const areaEffect = Math.log(areaSize) * 2; // Area size effect
+    const randomVariation = Math.random() * 5; // Random variation
+
+    return Math.max(5, Math.min(30, baseValue + dateEffect + areaEffect + randomVariation));
+  }
+
+  getColorForValue(value: number): string {
+    // Color scale from green to red based on SO2 value
+    if (value <= 10) return '#00ff00';
+    if (value <= 15) return '#ffff00';
+    if (value <= 20) return '#ffa500';
+    if (value <= 25) return '#ff4500';
+    return '#ff0000';
   }
 }
-
-export const so2PredictionService = new SO2PredictionService();

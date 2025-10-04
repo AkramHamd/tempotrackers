@@ -7,6 +7,8 @@ import { useAirQualityData, useAQIColor } from '../../lib/hooks/useData'
 import { useSO2Predictions } from '../../lib/hooks/useSO2Predictions'
 import ControlPanel from '../control/ControlPanel'
 import CitySearch from './CitySearch'
+import DatePicker from './DatePicker'
+import { CirclePoint } from '../../lib/types/so2'
 
 // Center coordinates for Washington D.C. area
 const DC_AREA_COORDS = [38.9072, -77.0369] as [number, number]
@@ -15,6 +17,15 @@ export default function FullInteractiveMap() {
   const mapRef = useRef<any>(null)
   const [currentLayer, setCurrentLayer] = useState('satellite')
   const [isControlPanelOpen, setIsControlPanelOpen] = useState(false)
+  const [selectedDate, setSelectedDate] = useState(new Date())
+  const [currentZoom, setCurrentZoom] = useState(13)
+  const [mapBounds, setMapBounds] = useState({
+    north: DC_AREA_COORDS[0] + 0.1,
+    south: DC_AREA_COORDS[0] - 0.1,
+    east: DC_AREA_COORDS[1] + 0.1,
+    west: DC_AREA_COORDS[1] - 0.1
+  })
+  
   const { data: airQualityData, loading: aqiLoading, error: aqiError } = useAirQualityData()
   const { 
     data: so2Data, 
@@ -23,7 +34,10 @@ export default function FullInteractiveMap() {
     getSO2Color 
   } = useSO2Predictions({
     latitude: DC_AREA_COORDS[0],
-    longitude: DC_AREA_COORDS[1]
+    longitude: DC_AREA_COORDS[1],
+    zoomLevel: currentZoom,
+    bounds: mapBounds,
+    selectedDate
   })
   const getAQIColor = useAQIColor()
   const [isMapInitialized, setIsMapInitialized] = useState(false)
@@ -54,9 +68,31 @@ export default function FullInteractiveMap() {
 
         const instance = L.map('map-container', {
           zoomControl: false,
-          minZoom: 11, // Prevent zooming out too far
+          minZoom: 8, // Allow wider view
           maxZoom: 18
-        }).setView(DC_AREA_COORDS, 13) // Show wider area
+        }).setView(DC_AREA_COORDS, currentZoom)
+
+        // Add event listeners for zoom and move
+        instance.on('zoomend', () => {
+          setCurrentZoom(instance.getZoom());
+          const bounds = instance.getBounds();
+          setMapBounds({
+            north: bounds.getNorth(),
+            south: bounds.getSouth(),
+            east: bounds.getEast(),
+            west: bounds.getWest()
+          });
+        });
+
+        instance.on('moveend', () => {
+          const bounds = instance.getBounds();
+          setMapBounds({
+            north: bounds.getNorth(),
+            south: bounds.getSouth(),
+            east: bounds.getEast(),
+            west: bounds.getWest()
+          });
+        });
 
         // Wait for map to be ready
         instance.whenReady(() => {
@@ -556,6 +592,14 @@ export default function FullInteractiveMap() {
             </div>
           </div>
           
+          <div className="px-3 py-2 border-b border-gray-200">
+            <h4 className="text-sm font-semibold text-gray-700 mb-2">Date Selection</h4>
+            <DatePicker
+              selectedDate={selectedDate}
+              onDateSelect={setSelectedDate}
+            />
+          </div>
+
           <div className="px-3 py-2">
             <h4 className="text-sm font-semibold text-gray-700 mb-2">Data Layers</h4>
             <div className="flex flex-col space-y-1">
@@ -580,6 +624,10 @@ export default function FullInteractiveMap() {
                   </span>
                 )}
               </button>
+            </div>
+            <div className="mt-2 text-xs text-gray-500">
+              <p>Zoom: {currentZoom}</p>
+              <p>Area: {((mapBounds.north - mapBounds.south) * (mapBounds.east - mapBounds.west)).toFixed(4)}°</p>
             </div>
           </div>
         </div>
