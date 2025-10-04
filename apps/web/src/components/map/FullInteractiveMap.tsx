@@ -44,6 +44,12 @@ export default function FullInteractiveMap() {
         return
       }
 
+      // Check if map is already initialized
+      if ((window as any).mapInstance) {
+        console.log('Map already initialized, skipping...')
+        return
+      }
+
       const L = (await import('leaflet')).default
       
       // Fix for default markers
@@ -186,6 +192,8 @@ export default function FullInteractiveMap() {
     return () => {
       if (map) {
         map.remove()
+        setMap(null)
+        ;(window as any).mapInstance = null
       }
     }
   }, [isClient, airQualityData, getAQIColor])
