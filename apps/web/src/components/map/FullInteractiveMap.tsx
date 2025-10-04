@@ -30,32 +30,22 @@ export default function FullInteractiveMap() {
       const mapInstance = (window as any).mapInstance
       if (mapInstance && typeof mapInstance.invalidateSize === 'function') {
         try {
-          // Force complete map refresh
+          // Simple and reliable map refresh
           mapInstance.invalidateSize()
           
-          // Redraw all layers
-          mapInstance.eachLayer((layer: any) => {
-            if (layer.redraw && typeof layer.redraw === 'function') {
-              layer.redraw()
+          // Force a gentle view refresh
+          setTimeout(() => {
+            if (mapInstance && typeof mapInstance.getCenter === 'function' && typeof mapInstance.getZoom === 'function') {
+              const center = mapInstance.getCenter()
+              const zoom = mapInstance.getZoom()
+              mapInstance.setView(center, zoom, { animate: false })
             }
-          })
-          
-          // Force view refresh
-          if (typeof mapInstance.getCenter === 'function' && typeof mapInstance.getZoom === 'function' && typeof mapInstance.setView === 'function') {
-            const center = mapInstance.getCenter()
-            const zoom = mapInstance.getZoom()
-            mapInstance.setView(center, zoom, { animate: false })
-          }
-          
-          // Trigger tile refresh
-          if (mapInstance._resetView && typeof mapInstance._resetView === 'function') {
-            mapInstance._resetView()
-          }
+          }, 50)
         } catch (error) {
           console.warn('Map resize error:', error)
         }
       }
-    }, 200)
+    }, 300)
 
     return () => clearTimeout(timer)
   }, [isControlPanelOpen, isClient, map])
@@ -73,12 +63,6 @@ export default function FullInteractiveMap() {
         setTimeout(() => {
           try {
             mapInstance.invalidateSize()
-            // Force tile layer refresh
-            mapInstance.eachLayer((layer: any) => {
-              if (layer.redraw && typeof layer.redraw === 'function') {
-                layer.redraw()
-              }
-            })
           } catch (error) {
             console.warn('Map resize observer error:', error)
           }
@@ -295,7 +279,6 @@ export default function FullInteractiveMap() {
       
       {/* Leaflet Map Container */}
       <div 
-        key={`map-${isControlPanelOpen ? 'open' : 'closed'}`}
         id="map-container" 
         className={`h-full transition-all duration-300 ${
           isControlPanelOpen ? 'ml-80' : 'ml-0'
