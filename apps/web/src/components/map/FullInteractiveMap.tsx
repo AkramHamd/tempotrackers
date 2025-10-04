@@ -29,9 +29,8 @@ export default function FullInteractiveMap() {
   const [isMapInitialized, setIsMapInitialized] = useState(false)
   const [showSO2Layer, setShowSO2Layer] = useState(false)
 
-  // Initialize map only once when component mounts and data is ready
+  // Initialize map immediately
   useEffect(() => {
-    if (!airQualityData || !so2Data) return; // Wait for data to be ready
 
     const initializeMap = async () => {
       try {
@@ -223,6 +222,152 @@ export default function FullInteractiveMap() {
     }
   }, [airQualityData, getAQIColor, so2Data, getSO2Color, showSO2Layer])
 
+  // Update markers when data changes
+  useEffect(() => {
+    if (!isMapInitialized || !mapRef.current) return;
+
+    const updateMarkers = async () => {
+      const L = (await import('leaflet')).default;
+      const map = mapRef.current;
+
+      // Clear existing markers
+      map.eachLayer((layer: any) => {
+        if (layer instanceof L.Marker) {
+          map.removeLayer(layer);
+        }
+      });
+
+      // Add NASA HQ marker
+      const nasaIcon = L.divIcon({
+        html: `
+          <div style="
+            width: 32px; 
+            height: 32px; 
+            background: #1e40af; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: white; 
+            font-weight: bold; 
+            font-size: 12px;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          ">NASA</div>
+        `,
+        className: 'custom-div-icon',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+
+      const nasaMarker = L.marker(NASA_HQ_COORDS, { icon: nasaIcon }).addTo(map);
+      
+      // Get NASA HQ data if available
+      const nasaData = airQualityData?.find(data => data.id === 'nasa-hq');
+      
+      nasaMarker.bindPopup(`
+        <div style="padding: 8px;">
+          <h3 style="font-weight: bold; color: #1e40af; margin: 0 0 4px 0;">NASA Headquarters</h3>
+          <p style="font-size: 12px; color: #666; margin: 0 0 8px 0;">Washington D.C.</p>
+          <p style="font-size: 12px; color: #333; margin: 0 0 8px 0;">
+            The headquarters of the National Aeronautics and Space Administration, 
+            where the TEMPO mission is managed and coordinated.
+          </p>
+          <div style="border-top: 1px solid #eee; padding-top: 8px;">
+            <p style="font-size: 11px; color: #666; margin: 0;">
+              <strong>Current AQI:</strong> ${nasaData ? `${nasaData.aqi} (${nasaData.quality})` : 'Loading...'}<br/>
+              <strong>PM2.5:</strong> ${nasaData ? `${nasaData.pollutants.pm25} μg/m³` : 'Loading...'}<br/>
+              <strong>Source:</strong> ${nasaData ? nasaData.source : 'Loading...'}<br/>
+              <strong>Last Updated:</strong> ${nasaData ? nasaData.timestamp.toLocaleTimeString() : 'Loading...'}
+            </p>
+          </div>
+        </div>
+      `);
+
+      // Add air quality markers
+      if (airQualityData?.length > 0) {
+        airQualityData.forEach((data) => {
+          if (data.id === 'nasa-hq') return;
+          
+          const aqiIcon = L.divIcon({
+            html: `
+              <div style="
+                width: 24px; 
+                height: 24px; 
+                background: ${getAQIColor(data.aqi)}; 
+                border-radius: 50%; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                color: white; 
+                font-weight: bold; 
+                font-size: 8px;
+                border: 2px solid white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+              ">${data.aqi}</div>
+            `,
+            className: 'custom-div-icon',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          });
+
+          L.marker([data.latitude, data.longitude], { icon: aqiIcon })
+            .bindPopup(`
+              <div style="padding: 8px;">
+                <h3 style="font-weight: bold; color: #333; margin: 0 0 4px 0;">Air Quality Station</h3>
+                <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">AQI: <strong>${data.aqi}</strong></p>
+                <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Quality: <strong>${data.quality}</strong></p>
+                <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">PM2.5: <strong>${data.pollutants.pm25} μg/m³</strong></p>
+                <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Source: <strong>${data.source}</strong></p>
+                <p style="font-size: 11px; color: #999; margin: 0;">Updated: ${data.timestamp.toLocaleTimeString()}</p>
+              </div>
+            `)
+            .addTo(map);
+        });
+      }
+
+      // Add SO2 prediction markers
+      if (showSO2Layer && so2Data && so2Data.predictions.length > 0) {
+        so2Data.predictions.forEach((point) => {
+          const so2Icon = L.divIcon({
+            html: `
+              <div style="
+                width: 20px; 
+                height: 20px; 
+                background: ${getSO2Color(point.prediction)}; 
+                border-radius: 50%; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                color: white; 
+                font-weight: bold; 
+                font-size: 8px;
+                border: 2px solid white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+              ">${Math.round(point.prediction)}</div>
+            `,
+            className: 'custom-div-icon',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+          });
+
+          L.marker([point.latitude, point.longitude], { icon: so2Icon })
+            .bindPopup(`
+              <div style="padding: 8px;">
+                <h3 style="font-weight: bold; color: #333; margin: 0 0 4px 0;">SO₂ Prediction</h3>
+                <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Value: <strong>${point.prediction.toFixed(2)} ppb</strong></p>
+                <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Location: <strong>(${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)})</strong></p>
+                <p style="font-size: 11px; color: #999; margin: 0;">Date: ${so2Data.centerPoint.date}</p>
+              </div>
+            `)
+            .addTo(map);
+        });
+      }
+    };
+
+    updateMarkers();
+  }, [isMapInitialized, airQualityData, so2Data, showSO2Layer, getAQIColor, getSO2Color]);
+
   // Handle map resize when control panel opens/closes
   useEffect(() => {
     if (!isMapInitialized || !mapRef.current) return
@@ -293,11 +438,9 @@ export default function FullInteractiveMap() {
     }
   };
 
-  // Only show loading state on initial load
-  const initialLoading = !isMapInitialized && (aqiLoading || so2Loading);
   const error = aqiError || so2Error;
 
-  if (initialLoading) {
+  if (!isMapInitialized) {
     return (
       <div className="h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
