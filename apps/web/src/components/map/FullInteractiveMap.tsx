@@ -228,32 +228,27 @@ export default function FullInteractiveMap() {
       ></div>
 
       {/* Map Info Panel */}
-      <div className={`absolute bottom-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-4 max-w-sm transition-all duration-300 ${
-        isControlPanelOpen ? 'left-84' : 'left-4'
+      <div className={`absolute bottom-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 max-w-xs transition-all duration-300 ${
+        isControlPanelOpen ? 'left-80' : 'left-4'
       }`}>
-        <h3 className="font-semibold text-gray-900 mb-2">TempoTrackers Map</h3>
-        <p className="text-sm text-gray-600 mb-3">
-          Interactive air quality monitoring centered on NASA Headquarters in Washington D.C.
+        <div className="flex items-center space-x-2 mb-2">
+          <div className="w-6 h-6 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-xs">T</span>
+          </div>
+          <h3 className="font-semibold text-gray-900 text-sm">TempoTrackers</h3>
+        </div>
+        <p className="text-xs text-gray-600">
+          Interactive air quality monitoring around NASA Headquarters
         </p>
-        <div className="space-y-2">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-blue-600"></div>
-            <span className="text-xs text-gray-600">NASA Headquarters</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            <span className="text-xs text-gray-600">Good Air Quality (AQI 0-50)</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-            <span className="text-xs text-gray-600">Moderate Air Quality (AQI 51-100)</span>
-          </div>
+        <div className="mt-2 text-xs text-gray-500">
+          <div>Stations: {airQualityData?.length || 0}</div>
+          <div>Last Update: {airQualityData?.[0]?.timestamp.toLocaleTimeString() || 'Loading...'}</div>
         </div>
       </div>
 
       {/* Navigation Header */}
       <div className={`absolute top-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 transition-all duration-300 ${
-        isControlPanelOpen ? 'left-84' : 'left-4'
+        isControlPanelOpen ? 'left-80' : 'left-4'
       }`}>
         <div className="flex items-center space-x-3">
           <Link href="/" className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors">
