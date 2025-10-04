@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useAirQualityData, useAQIColor } from '../../lib/hooks/useData'
+import ControlPanel from '../control/ControlPanel'
 
 // NASA Headquarters coordinates (Washington D.C.)
 const NASA_HQ_COORDS = [38.8833, -77.0167] as [number, number]
@@ -12,6 +13,7 @@ export default function FullInteractiveMap() {
   const [isClient, setIsClient] = useState(false)
   const [map, setMap] = useState<any>(null)
   const [currentLayer, setCurrentLayer] = useState('satellite')
+  const [isControlPanelOpen, setIsControlPanelOpen] = useState(false)
   const { data: airQualityData, loading, error } = useAirQualityData()
   const getAQIColor = useAQIColor()
 
@@ -211,11 +213,24 @@ export default function FullInteractiveMap() {
 
   return (
     <div className="relative h-screen w-full">
+      {/* Control Panel */}
+      <ControlPanel 
+        isOpen={isControlPanelOpen} 
+        onToggle={() => setIsControlPanelOpen(!isControlPanelOpen)} 
+      />
+      
       {/* Leaflet Map Container */}
-      <div id="map-container" className="h-full w-full"></div>
+      <div 
+        id="map-container" 
+        className={`h-full transition-all duration-300 ${
+          isControlPanelOpen ? 'ml-80' : 'ml-0'
+        }`}
+      ></div>
 
       {/* Map Info Panel */}
-      <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-4 max-w-sm">
+      <div className={`absolute bottom-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-4 max-w-sm transition-all duration-300 ${
+        isControlPanelOpen ? 'left-84' : 'left-4'
+      }`}>
         <h3 className="font-semibold text-gray-900 mb-2">TempoTrackers Map</h3>
         <p className="text-sm text-gray-600 mb-3">
           Interactive air quality monitoring centered on NASA Headquarters in Washington D.C.
@@ -237,7 +252,9 @@ export default function FullInteractiveMap() {
       </div>
 
       {/* Navigation Header */}
-      <div className="absolute top-4 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3">
+      <div className={`absolute top-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 transition-all duration-300 ${
+        isControlPanelOpen ? 'left-84' : 'left-4'
+      }`}>
         <div className="flex items-center space-x-3">
           <Link href="/" className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
@@ -253,7 +270,9 @@ export default function FullInteractiveMap() {
       </div>
 
       {/* Map Tools Panel */}
-      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3">
+      <div className={`absolute top-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 transition-all duration-300 ${
+        isControlPanelOpen ? 'left-1/2 transform -translate-x-1/2' : 'left-1/2 transform -translate-x-1/2'
+      }`}>
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <div className="w-2 h-2 rounded-full bg-green-500"></div>
