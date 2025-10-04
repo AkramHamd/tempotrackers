@@ -21,57 +21,7 @@ export default function FullInteractiveMap() {
     setIsClient(true)
   }, [])
 
-  // Simple map resize handling
-  useEffect(() => {
-    if (!isClient || !map) return
-
-    const mapInstance = (window as any).mapInstance
-    if (!mapInstance) return
-
-    // Simple delay and refresh
-    const timer = setTimeout(() => {
-      try {
-        mapInstance.invalidateSize()
-      } catch (error) {
-        console.warn('Map resize error:', error)
-      }
-    }, 500)
-
-    return () => clearTimeout(timer)
-  }, [isControlPanelOpen, isClient, map])
-
-  // Add ResizeObserver to handle container size changes
-  useEffect(() => {
-    if (!isClient) return
-
-    const mapContainer = document.getElementById('map-container')
-    if (!mapContainer) return
-
-    const resizeObserver = new ResizeObserver(() => {
-      const mapInstance = (window as any).mapInstance
-      if (mapInstance && typeof mapInstance.invalidateSize === 'function') {
-        setTimeout(() => {
-          try {
-            mapInstance.invalidateSize()
-            // Force tile refresh with micro zoom change
-            const currentZoom = mapInstance.getZoom()
-            mapInstance.setZoom(currentZoom + 0.001)
-            setTimeout(() => {
-              mapInstance.setZoom(currentZoom)
-            }, 5)
-          } catch (error) {
-            console.warn('Map resize observer error:', error)
-          }
-        }, 150)
-      }
-    })
-
-    resizeObserver.observe(mapContainer)
-
-    return () => {
-      resizeObserver.disconnect()
-    }
-  }, [isClient])
+  // No resize handling needed - map container never changes size
 
   useEffect(() => {
     if (!isClient) return
@@ -273,17 +223,16 @@ export default function FullInteractiveMap() {
         onToggle={() => setIsControlPanelOpen(!isControlPanelOpen)} 
       />
       
-      {/* Leaflet Map Container */}
+      {/* Leaflet Map Container - Full width, no resize */}
       <div 
         id="map-container" 
-        className={`h-full transition-all duration-300 ${
-          isControlPanelOpen ? 'ml-80' : 'ml-0'
-        }`}
+        className="h-full w-full"
       ></div>
 
-      {/* Map Info Panel - Hidden when control panel is open */}
-      {!isControlPanelOpen && (
-        <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 max-w-xs transition-all duration-300">
+      {/* Map Info Panel - Always visible, positioned to avoid control panel */}
+      <div className={`absolute bottom-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 max-w-xs transition-all duration-300 ${
+        isControlPanelOpen ? 'left-80' : 'left-4'
+      }`}>
           <div className="flex items-center space-x-2 mb-2">
             <div className="w-6 h-6 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-xs">T</span>
@@ -298,11 +247,11 @@ export default function FullInteractiveMap() {
             <div>Last Update: {airQualityData?.[0]?.timestamp.toLocaleTimeString() || 'Loading...'}</div>
           </div>
         </div>
-      )}
 
-      {/* Navigation Header - Hidden when control panel is open */}
-      {!isControlPanelOpen && (
-        <div className="absolute top-4 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 transition-all duration-300">
+      {/* Navigation Header - Always visible, positioned to avoid control panel */}
+      <div className={`absolute top-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 transition-all duration-300 ${
+        isControlPanelOpen ? 'left-80' : 'left-4'
+      }`}>
         <div className="flex items-center space-x-3">
           <Link href="/" className="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors">
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
@@ -316,7 +265,6 @@ export default function FullInteractiveMap() {
           </Link>
         </div>
         </div>
-      )}
 
       {/* Map Tools Panel */}
       <div className={`absolute top-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 transition-all duration-300 ${

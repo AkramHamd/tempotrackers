@@ -64,7 +64,7 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
   }
 
   return (
-    <div className={`fixed left-0 top-0 h-full bg-white shadow-xl z-[1000] transition-all duration-300 ${
+    <div className={`fixed left-0 top-0 h-full bg-white/95 backdrop-blur-sm shadow-xl z-[1000] transition-all duration-300 ${
       isMinimized ? 'w-16' : 'w-80'
     }`}>
       {/* Header */}
