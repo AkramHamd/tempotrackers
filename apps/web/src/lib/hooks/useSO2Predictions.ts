@@ -1,12 +1,6 @@
 import { useState, useEffect } from 'react';
 import { SO2PredictionService } from '../services/so2PredictionService';
-
-interface ViewBounds {
-  north: number;
-  south: number;
-  east: number;
-  west: number;
-}
+import { ViewBounds, PredictionResponse } from '../types/so2';
 
 interface UseSO2PredictionsParams {
   latitude: number;
@@ -23,7 +17,7 @@ export function useSO2Predictions({
   bounds,
   selectedDate = new Date()
 }: UseSO2PredictionsParams) {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<PredictionResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,8 +25,9 @@ export function useSO2Predictions({
     const fetchPredictions = async () => {
       try {
         setLoading(true);
+        setError(null);
         const service = SO2PredictionService.getInstance();
-        const predictions = service.getPredictions({
+        const predictions = await service.getPredictions({
           latitude,
           longitude,
           date: selectedDate.toISOString().split('T')[0],
@@ -40,10 +35,10 @@ export function useSO2Predictions({
           bounds
         });
         setData(predictions);
-        setError(null);
       } catch (err) {
         console.error('Error fetching SO2 predictions:', err);
-        setError('Failed to fetch SO2 predictions');
+        setError(err instanceof Error ? err.message : 'Failed to fetch SO2 predictions');
+        setData(null);
       } finally {
         setLoading(false);
       }

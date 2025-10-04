@@ -141,7 +141,7 @@ export default function FullInteractiveMap() {
 
         // Add SO2 prediction markers
         if (showSO2Layer && so2Data && so2Data.predictions.length > 0) {
-          so2Data.predictions.forEach((point) => {
+          so2Data.predictions.forEach((point: CirclePoint) => {
             const so2Icon = L.divIcon({
               html: `
                 <div style="
@@ -318,7 +318,7 @@ export default function FullInteractiveMap() {
         }).addTo(map);
 
         // Add warning circles for high SO2 values first (so they appear behind markers)
-        so2Data.predictions.forEach((point) => {
+        so2Data.predictions.forEach((point: CirclePoint) => {
           if (point.prediction > 20) {
             L.circle([point.latitude, point.longitude], {
               radius: 300, // 300m radius
@@ -332,7 +332,7 @@ export default function FullInteractiveMap() {
         });
 
         // Then add all SO2 markers
-        so2Data.predictions.forEach((point) => {
+        so2Data.predictions.forEach((point: CirclePoint) => {
           const so2Icon = L.divIcon({
             html: `
               <div style="
