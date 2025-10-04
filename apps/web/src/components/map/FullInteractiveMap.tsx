@@ -21,6 +21,29 @@ export default function FullInteractiveMap() {
     setIsClient(true)
   }, [])
 
+  // Additional effect to ensure map loads after navigation
+  useEffect(() => {
+    if (!isClient) return
+
+    // Multiple attempts to ensure map loads after navigation
+    const attempts = [100, 300, 500, 1000] // Try at different intervals
+    
+    attempts.forEach((delay, index) => {
+      const timer = setTimeout(() => {
+        const mapContainer = document.getElementById('map-container')
+        if (mapContainer && !(window as any).mapInstance) {
+          console.log(`Triggering map initialization after navigation... (attempt ${index + 1})`)
+          // Force re-run of map initialization
+          const event = new CustomEvent('map-init-required')
+          window.dispatchEvent(event)
+        }
+      }, delay)
+
+      // Clean up timers
+      return () => clearTimeout(timer)
+    })
+  }, [isClient])
+
   // No resize handling needed - map container never changes size
 
   useEffect(() => {
@@ -188,8 +211,17 @@ export default function FullInteractiveMap() {
 
     initMap()
 
+    // Add event listener for navigation-triggered initialization
+    const handleMapInitRequired = () => {
+      console.log('Map init required event received, retrying...')
+      initMap()
+    }
+    
+    window.addEventListener('map-init-required', handleMapInitRequired)
+
     // Cleanup
     return () => {
+      window.removeEventListener('map-init-required', handleMapInitRequired)
       if (map) {
         map.remove()
         setMap(null)
