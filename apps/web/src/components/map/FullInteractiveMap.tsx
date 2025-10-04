@@ -9,6 +9,7 @@ import ControlPanel from '../control/ControlPanel'
 import CitySearch from './CitySearch'
 import DatePicker from './DatePicker'
 import { CirclePoint } from '../../lib/types/so2'
+import 'leaflet.heat'
 
 // Center coordinates for Washington D.C. area
 const DC_AREA_COORDS = [38.9072, -77.0369] as [number, number]
@@ -16,6 +17,7 @@ const DC_AREA_COORDS = [38.9072, -77.0369] as [number, number]
 export default function FullInteractiveMap() {
   const mapRef = useRef<any>(null)
   const updateTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const heatmapLayerRef = useRef<any>(null)
   const [currentLayer, setCurrentLayer] = useState('satellite')
   const [isControlPanelOpen, setIsControlPanelOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -264,12 +266,17 @@ export default function FullInteractiveMap() {
       const L = (await import('leaflet')).default;
       const map = mapRef.current;
 
-      // Clear existing markers and circles
+      // Clear existing markers, circles, and heatmap
       map.eachLayer((layer: any) => {
-        if (layer instanceof L.Marker || layer instanceof L.Circle) {
+        if (layer instanceof L.Marker || layer instanceof L.Circle || layer === heatmapLayerRef.current) {
           map.removeLayer(layer);
         }
       });
+      
+      // Clear heatmap reference
+      if (heatmapLayerRef.current) {
+        heatmapLayerRef.current = null;
+      }
 
       // No NASA HQ marker needed
 
@@ -315,7 +322,7 @@ export default function FullInteractiveMap() {
         });
       }
 
-      // Add SO2 prediction markers
+      // Add SO2 prediction heatmap
       if (so2Data && so2Data.predictions.length > 0) {
         // Add coverage area
         L.circle(DC_AREA_COORDS, {
@@ -327,54 +334,67 @@ export default function FullInteractiveMap() {
           dashArray: '5, 10'
         }).addTo(map);
 
-        // Add warning circles for high SO2 values first (so they appear behind markers)
-        so2Data.predictions.forEach((point: CirclePoint) => {
-          if (point.prediction > 20) {
-            L.circle([point.latitude, point.longitude], {
-              radius: 300, // 300m radius
-              color: 'red',
-              fillColor: 'red',
-              fillOpacity: 0.15,
-              weight: 2,
-              dashArray: '5, 5'
-            }).addTo(map);
-          }
+        // Convert predictions to heatmap data
+        const heatData = so2Data.predictions.map((point: CirclePoint) => {
+          // Scale intensity based on prediction value (0-1)
+          const intensity = point.prediction / 30; // Assuming max value is 30
+          return [point.latitude, point.longitude, intensity];
         });
 
-        // Then add all SO2 markers
-        so2Data.predictions.forEach((point: CirclePoint) => {
-          const so2Icon = L.divIcon({
-            html: `
-              <div style="
-                width: 20px; 
-                height: 20px; 
-                background: ${getSO2Color(point.prediction)}; 
-                border-radius: 50%; 
-                display: flex; 
-                align-items: center; 
-                justify-content: center; 
-                color: white; 
-                font-weight: bold; 
-                font-size: 8px;
-                border: 2px solid white;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-              ">${Math.round(point.prediction)}</div>
-            `,
-            className: 'custom-div-icon',
-            iconSize: [20, 20],
-            iconAnchor: [10, 10]
-          });
+        // Create and add heatmap layer
+        const heat = (L as any).heatLayer(heatData, {
+          radius: 20,
+          blur: 15,
+          maxZoom: 18,
+          max: 1.0,
+          gradient: {
+            0.0: 'blue',
+            0.3: 'lime',
+            0.5: 'yellow',
+            0.7: 'orange',
+            1.0: 'red'
+          }
+        }).addTo(map);
 
-          L.marker([point.latitude, point.longitude], { icon: so2Icon })
+        // Store reference for cleanup
+        heatmapLayerRef.current = heat;
+
+        // Add markers for high SO2 values
+        so2Data.predictions.forEach((point: CirclePoint) => {
+          if (point.prediction > 20) {
+            const marker = L.marker([point.latitude, point.longitude], {
+              icon: L.divIcon({
+                html: `
+                  <div style="
+                    width: 24px; 
+                    height: 24px; 
+                    background: rgba(255,0,0,0.7); 
+                    border-radius: 50%; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center; 
+                    color: white; 
+                    font-weight: bold; 
+                    font-size: 10px;
+                    border: 2px solid white;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                  ">${Math.round(point.prediction)}</div>
+                `,
+                className: 'custom-div-icon',
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+              })
+            })
             .bindPopup(`
               <div style="padding: 8px;">
-                <h3 style="font-weight: bold; color: #333; margin: 0 0 4px 0;">SO₂ Prediction</h3>
+                <h3 style="font-weight: bold; color: #333; margin: 0 0 4px 0;">High SO₂ Alert</h3>
                 <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Value: <strong>${point.prediction.toFixed(2)} ppb</strong></p>
                 <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Location: <strong>(${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)})</strong></p>
                 <p style="font-size: 11px; color: #999; margin: 0;">Date: ${so2Data.centerPoint.date}</p>
               </div>
             `)
             .addTo(map);
+          }
         });
       }
     };
