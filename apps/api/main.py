@@ -7,7 +7,11 @@ import numpy as np
 from datetime import datetime
 import os
 
-app = FastAPI(title="SO2 Prediction API")
+app = FastAPI(
+    title="SO2 Prediction API",
+    description="Air Quality Forecasting API powered by NASA TEMPO data",
+    version="1.0.0"
+)
 
 # Enable CORS
 app.add_middleware(
@@ -18,13 +22,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.get("/")
+async def root():
+    """API root endpoint with basic information."""
+    return {
+        "name": "TempoTrackers API",
+        "version": "1.0.0",
+        "status": "healthy",
+        "model_loaded": model is not None,
+        "endpoints": {
+            "predict": "/predict",
+            "health": "/health",
+            "docs": "/docs"
+        }
+    }
+
 # Load the model
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "SO2_model.pkl")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "SO2_model.json")
 try:
-    model = joblib.load(MODEL_PATH)
+    import xgboost as xgb
+    model = xgb.Booster()
+    model.load_model(MODEL_PATH)
 except Exception as e:
     print(f"Error loading model: {e}")
-    model = None
+    # Try loading from pickle as fallback
+    try:
+        MODEL_PICKLE_PATH = os.path.join(os.path.dirname(__file__), "models", "SO2_model.pkl")
+        model = joblib.load(MODEL_PICKLE_PATH)
+    except Exception as e:
+        print(f"Error loading pickle model: {e}")
+        model = None
 
 class PredictionRequest(BaseModel):
     latitude: float
