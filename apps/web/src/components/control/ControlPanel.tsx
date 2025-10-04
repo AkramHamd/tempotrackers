@@ -64,7 +64,7 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
   }
 
   return (
-    <div className={`fixed left-0 top-0 h-full bg-white/95 backdrop-blur-sm shadow-xl z-[1000] transition-all duration-500 ease-in-out transform ${
+    <div className={`fixed left-0 top-0 h-full bg-white/95 backdrop-blur-sm shadow-xl z-[1000] transition-all duration-500 ease-in-out transform flex flex-col ${
       isMinimized ? 'w-16' : 'w-80'
     } ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       {/* Header */}
@@ -100,7 +100,7 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
       </div>
 
       {/* Navigation */}
-      <div className="p-2">
+      <div className="p-2 flex-shrink-0">
         <nav className="space-y-1">
           {sections.map((section, index) => (
             <button
@@ -125,7 +125,7 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
 
       {/* Content */}
       {!isMinimized && (
-        <div className="flex-1 overflow-y-auto p-4">
+        <div className="flex-1 overflow-y-auto p-4 min-h-0 custom-scrollbar">
           <div 
             className="animate-fadeInUp"
             style={{
