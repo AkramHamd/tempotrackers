@@ -3,32 +3,17 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useAirQualityData, useAQIColor } from '@/lib/hooks/useData'
 
 // NASA Headquarters coordinates (Washington D.C.)
 const NASA_HQ_COORDS = [38.8833, -77.0167] as [number, number]
-
-// Sample air quality data
-const sampleAirQualityData = [
-  { lat: 38.8900, lng: -77.0100, aqi: 52, quality: 'Moderate', pollutant: 'PM2.5: 15 μg/m³' },
-  { lat: 38.8750, lng: -77.0250, aqi: 38, quality: 'Good', pollutant: 'PM2.5: 9 μg/m³' },
-  { lat: 38.9000, lng: -77.0000, aqi: 65, quality: 'Moderate', pollutant: 'PM2.5: 18 μg/m³' },
-  { lat: 38.8700, lng: -77.0300, aqi: 42, quality: 'Good', pollutant: 'PM2.5: 11 μg/m³' },
-  { lat: 38.9100, lng: -76.9900, aqi: 58, quality: 'Moderate', pollutant: 'PM2.5: 16 μg/m³' }
-]
-
-const getAQIColor = (aqi: number) => {
-  if (aqi <= 50) return '#00e400'
-  if (aqi <= 100) return '#ffff00'
-  if (aqi <= 150) return '#ff7e00'
-  if (aqi <= 200) return '#ff0000'
-  if (aqi <= 300) return '#8f3f97'
-  return '#7e0023'
-}
 
 export default function FullInteractiveMap() {
   const [isClient, setIsClient] = useState(false)
   const [map, setMap] = useState<any>(null)
   const [currentLayer, setCurrentLayer] = useState('satellite')
+  const { data: airQualityData, loading, error } = useAirQualityData()
+  const getAQIColor = useAQIColor()
 
   useEffect(() => {
     setIsClient(true)
@@ -83,6 +68,10 @@ export default function FullInteractiveMap() {
       })
 
       const nasaMarker = L.marker(NASA_HQ_COORDS, { icon: nasaIcon }).addTo(mapInstance)
+      
+      // Get NASA HQ data if available
+      const nasaData = airQualityData?.find(data => data.id === 'nasa-hq')
+      
       nasaMarker.bindPopup(`
         <div style="padding: 8px;">
           <h3 style="font-weight: bold; color: #1e40af; margin: 0 0 4px 0;">NASA Headquarters</h3>
@@ -93,48 +82,56 @@ export default function FullInteractiveMap() {
           </p>
           <div style="border-top: 1px solid #eee; padding-top: 8px;">
             <p style="font-size: 11px; color: #666; margin: 0;">
-              <strong>Current AQI:</strong> 45 (Good)<br/>
-              <strong>PM2.5:</strong> 12 μg/m³<br/>
-              <strong>Last Updated:</strong> ${new Date().toLocaleTimeString()}
+              <strong>Current AQI:</strong> ${nasaData ? `${nasaData.aqi} (${nasaData.quality})` : 'Loading...'}<br/>
+              <strong>PM2.5:</strong> ${nasaData ? `${nasaData.pollutants.pm25} μg/m³` : 'Loading...'}<br/>
+              <strong>Source:</strong> ${nasaData ? nasaData.source : 'Loading...'}<br/>
+              <strong>Last Updated:</strong> ${nasaData ? nasaData.timestamp.toLocaleTimeString() : 'Loading...'}
             </p>
           </div>
         </div>
       `)
 
-      // Add air quality markers
-      sampleAirQualityData.forEach((data) => {
-        const aqiIcon = L.divIcon({
-          html: `
-            <div style="
-              width: 24px; 
-              height: 24px; 
-              background: ${getAQIColor(data.aqi)}; 
-              border-radius: 50%; 
-              display: flex; 
-              align-items: center; 
-              justify-content: center; 
-              color: white; 
-              font-weight: bold; 
-              font-size: 8px;
-              border: 2px solid white;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            ">${data.aqi}</div>
-          `,
-          className: 'custom-div-icon',
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
-        })
+      // Add air quality markers from real data
+      if (airQualityData && airQualityData.length > 0) {
+        airQualityData.forEach((data) => {
+          // Skip NASA HQ as it has its own marker
+          if (data.id === 'nasa-hq') return
+          
+          const aqiIcon = L.divIcon({
+            html: `
+              <div style="
+                width: 24px; 
+                height: 24px; 
+                background: ${getAQIColor(data.aqi)}; 
+                border-radius: 50%; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                color: white; 
+                font-weight: bold; 
+                font-size: 8px;
+                border: 2px solid white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+              ">${data.aqi}</div>
+            `,
+            className: 'custom-div-icon',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          })
 
-        const aqiMarker = L.marker([data.lat, data.lng], { icon: aqiIcon }).addTo(mapInstance)
-        aqiMarker.bindPopup(`
-          <div style="padding: 8px;">
-            <h3 style="font-weight: bold; color: #333; margin: 0 0 4px 0;">Air Quality Station</h3>
-            <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">AQI: <strong>${data.aqi}</strong></p>
-            <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Quality: <strong>${data.quality}</strong></p>
-            <p style="font-size: 12px; color: #666; margin: 0;">${data.pollutant}</p>
-          </div>
-        `)
-      })
+          const aqiMarker = L.marker([data.latitude, data.longitude], { icon: aqiIcon }).addTo(mapInstance)
+          aqiMarker.bindPopup(`
+            <div style="padding: 8px;">
+              <h3 style="font-weight: bold; color: #333; margin: 0 0 4px 0;">Air Quality Station</h3>
+              <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">AQI: <strong>${data.aqi}</strong></p>
+              <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Quality: <strong>${data.quality}</strong></p>
+              <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">PM2.5: <strong>${data.pollutants.pm25} μg/m³</strong></p>
+              <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Source: <strong>${data.source}</strong></p>
+              <p style="font-size: 11px; color: #999; margin: 0;">Updated: ${data.timestamp.toLocaleTimeString()}</p>
+            </div>
+          `)
+        })
+      }
 
       // Store layers for switching
       const layers = {
@@ -162,7 +159,7 @@ export default function FullInteractiveMap() {
         map.remove()
       }
     }
-  }, [isClient])
+  }, [isClient, airQualityData, getAQIColor])
 
   const switchLayer = (layerKey: string) => {
     if (!isClient || !(window as any).mapLayers || !(window as any).mapInstance) return
@@ -182,12 +179,31 @@ export default function FullInteractiveMap() {
     setCurrentLayer(layerKey)
   }
 
-  if (!isClient) {
+  if (!isClient || loading) {
     return (
       <div className="h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading TempoTrackers Map...</p>
+          {loading && <p className="text-sm text-gray-500 mt-2">Fetching air quality data...</p>}
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Map</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </div>
     )
