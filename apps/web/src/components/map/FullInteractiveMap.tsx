@@ -13,10 +13,57 @@ const NASA_HQ_COORDS = [38.8833, -77.0167] as [number, number]
 export default function FullInteractiveMap() {
   const mapRef = useRef<any>(null)
   const [currentLayer, setCurrentLayer] = useState('satellite')
+  const [currentDataLayer, setCurrentDataLayer] = useState('aqi')  // Nuevo estado para la capa de datos
   const [isControlPanelOpen, setIsControlPanelOpen] = useState(false)
   const { data: airQualityData, loading, error } = useAirQualityData()
   const getAQIColor = useAQIColor()
   const [isMapInitialized, setIsMapInitialized] = useState(false)
+
+  // Método para cambiar la capa de fondo del mapa
+  const switchLayer = async (layerKey: string) => {
+    if (!isMapInitialized || !mapRef.current) return
+
+    const L = (await import('leaflet')).default
+    const map = mapRef.current
+
+    // Remove current tile layers
+    map.eachLayer((layer: any) => {
+      if (layer instanceof L.TileLayer) {
+        map.removeLayer(layer)
+      }
+    })
+
+    // Add new layer based on key
+    let newLayer
+    switch (layerKey) {
+      case 'satellite':
+        newLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+          maxZoom: 19
+        })
+        break
+      case 'street':
+        newLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19
+        })
+        break
+      case 'terrain':
+        newLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+          attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
+          maxZoom: 17
+        })
+        break
+      default:
+        newLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+          maxZoom: 19
+        })
+    }
+
+    newLayer.addTo(map)
+    setCurrentLayer(layerKey)
+  }
 
   // Initialize map only once when component mounts
   useEffect(() => {
@@ -112,48 +159,6 @@ export default function FullInteractiveMap() {
           </div>
         `)
 
-        // Add air quality markers from real data
-        if (airQualityData && airQualityData.length > 0) {
-          airQualityData.forEach((data) => {
-            // Skip NASA HQ as it has its own marker
-            if (data.id === 'nasa-hq') return
-            
-            const aqiIcon = L.divIcon({
-              html: `
-                <div style="
-                  width: 24px; 
-                  height: 24px; 
-                  background: ${getAQIColor(data.aqi)}; 
-                  border-radius: 50%; 
-                  display: flex; 
-                  align-items: center; 
-                  justify-content: center; 
-                  color: white; 
-                  font-weight: bold; 
-                  font-size: 8px;
-                  border: 2px solid white;
-                  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-                ">${data.aqi}</div>
-              `,
-              className: 'custom-div-icon',
-              iconSize: [24, 24],
-              iconAnchor: [12, 12]
-            })
-
-            const aqiMarker = L.marker([data.latitude, data.longitude], { icon: aqiIcon }).addTo(instance)
-            aqiMarker.bindPopup(`
-              <div style="padding: 8px;">
-                <h3 style="font-weight: bold; color: #333; margin: 0 0 4px 0;">Air Quality Station</h3>
-                <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">AQI: <strong>${data.aqi}</strong></p>
-                <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Quality: <strong>${data.quality}</strong></p>
-                <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">PM2.5: <strong>${data.pollutants.pm25} μg/m³</strong></p>
-                <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Source: <strong>${data.source}</strong></p>
-                <p style="font-size: 11px; color: #999; margin: 0;">Updated: ${data.timestamp.toLocaleTimeString()}</p>
-              </div>
-            `)
-          })
-        }
-
         setIsMapInitialized(true)
       } catch (error) {
         console.error('Error initializing map:', error)
@@ -183,51 +188,6 @@ export default function FullInteractiveMap() {
     }, 300)
   }, [isControlPanelOpen, isMapInitialized])
 
-  // No resize handling needed - map container never changes size
-
-
-  const switchLayer = async (layerKey: string) => {
-    if (!isMapInitialized || !mapRef.current) return
-
-    const L = (await import('leaflet')).default
-    const map = mapRef.current
-
-    // Remove current tile layers
-    map.eachLayer((layer: any) => {
-      if (layer instanceof L.TileLayer) {
-        map.removeLayer(layer)
-      }
-    })
-
-    // Add new layer based on key
-    let newLayer
-    switch (layerKey) {
-      case 'satellite':
-        newLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-          attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
-          maxZoom: 19
-        })
-        break
-      case 'street':
-        newLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-          maxZoom: 19
-        })
-        break
-      case 'terrain':
-        newLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
-          attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
-          maxZoom: 17
-        })
-        break
-    }
-
-    if (newLayer) {
-      newLayer.addTo(map)
-      setCurrentLayer(layerKey)
-    }
-  }
-
   // Función para centrar el mapa en una ubicación buscada
   const handleCitySelect = (lat: number, lng: number) => {
     if (!isMapInitialized || !mapRef.current) return;
@@ -242,6 +202,189 @@ export default function FullInteractiveMap() {
       console.error('Error al centrar el mapa:', error);
     }
   };
+
+  // Función para actualizar los marcadores según la capa de datos seleccionada
+  const updateDataLayer = async (layerType: string) => {
+    if (!isMapInitialized || !mapRef.current) return
+    
+    const L = (await import('leaflet')).default
+    const map = mapRef.current
+    
+    // Eliminar marcadores existentes de calidad del aire
+    map.eachLayer((layer: any) => {
+      if (layer instanceof L.Marker && layer.options.alt === 'air-quality-marker') {
+        map.removeLayer(layer)
+      }
+    })
+    
+    // No continuar si no hay datos
+    if (!airQualityData || airQualityData.length === 0) return
+    
+    // Añadir nuevos marcadores según la capa seleccionada
+    airQualityData.forEach((data) => {
+      // Saltamos NASA HQ ya que tiene su propio marcador
+      if (data.id === 'nasa-hq') return
+      
+      let value, color, label, unit
+      
+      switch (layerType) {
+        case 'pm25':
+          value = data.pollutants.pm25
+          color = getPollutantColor('pm25', value)
+          label = 'PM2.5'
+          unit = 'μg/m³'
+          break
+        case 'pm10':
+          value = data.pollutants.pm10
+          color = getPollutantColor('pm10', value)
+          label = 'PM10'
+          unit = 'μg/m³'
+          break
+        case 'o3':
+          value = data.pollutants.o3
+          color = getPollutantColor('o3', value)
+          label = 'O3'
+          unit = 'ppb'
+          break
+        case 'no2':
+          value = data.pollutants.no2
+          color = getPollutantColor('no2', value)
+          label = 'NO2'
+          unit = 'ppb'
+          break
+        case 'co':
+          value = data.pollutants.co
+          color = getPollutantColor('co', value)
+          label = 'CO'
+          unit = 'ppm'
+          break
+        case 'so2':
+          value = data.pollutants.so2
+          color = getPollutantColor('so2', value)
+          label = 'SO2'
+          unit = 'ppb'
+          break
+        case 'aqi':
+        default:
+          value = data.aqi
+          color = getAQIColor(value)
+          label = 'AQI'
+          unit = ''
+          break
+      }
+      
+      const markerIcon = L.divIcon({
+        html: `
+          <div style="
+            width: 24px; 
+            height: 24px; 
+            background: ${color}; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: white; 
+            font-weight: bold; 
+            font-size: 8px;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+          ">${Math.round(value)}</div>
+        `,
+        className: 'custom-div-icon',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      })
+
+      const marker = L.marker([data.latitude, data.longitude], { 
+        icon: markerIcon,
+        alt: 'air-quality-marker'
+      }).addTo(map)
+      
+      marker.bindPopup(`
+        <div style="padding: 8px;">
+          <h3 style="font-weight: bold; color: #333; margin: 0 0 4px 0;">Air Quality Station</h3>
+          <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">${label}: <strong>${value}${unit}</strong></p>
+          <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Source: <strong>${data.source}</strong></p>
+          <p style="font-size: 11px; color: #999; margin: 0;">Updated: ${data.timestamp.toLocaleTimeString()}</p>
+        </div>
+      `)
+    })
+    
+    // Actualizar el estado de la capa de datos actual
+    setCurrentDataLayer(layerType)
+  }
+
+  // Función para obtener color según el tipo de contaminante y su valor
+  const getPollutantColor = (pollutantType: string, value: number): string => {
+    // Rangos y colores basados en estándares EPA
+    const ranges = {
+      pm25: [
+        { max: 12, color: '#00e400' }, // Bueno
+        { max: 35.4, color: '#ffff00' }, // Moderado
+        { max: 55.4, color: '#ff7e00' }, // Poco saludable para grupos sensibles
+        { max: 150.4, color: '#ff0000' }, // Poco saludable
+        { max: 250.4, color: '#8f3f97' }, // Muy poco saludable
+        { max: 10000, color: '#7e0023' } // Peligroso
+      ],
+      pm10: [
+        { max: 54, color: '#00e400' },
+        { max: 154, color: '#ffff00' },
+        { max: 254, color: '#ff7e00' },
+        { max: 354, color: '#ff0000' },
+        { max: 424, color: '#8f3f97' },
+        { max: 10000, color: '#7e0023' }
+      ],
+      o3: [
+        { max: 54, color: '#00e400' },
+        { max: 70, color: '#ffff00' },
+        { max: 85, color: '#ff7e00' },
+        { max: 105, color: '#ff0000' },
+        { max: 200, color: '#8f3f97' },
+        { max: 10000, color: '#7e0023' }
+      ],
+      no2: [
+        { max: 53, color: '#00e400' },
+        { max: 100, color: '#ffff00' },
+        { max: 360, color: '#ff7e00' },
+        { max: 649, color: '#ff0000' },
+        { max: 1249, color: '#8f3f97' },
+        { max: 10000, color: '#7e0023' }
+      ],
+      co: [
+        { max: 4.4, color: '#00e400' },
+        { max: 9.4, color: '#ffff00' },
+        { max: 12.4, color: '#ff7e00' },
+        { max: 15.4, color: '#ff0000' },
+        { max: 30.4, color: '#8f3f97' },
+        { max: 1000, color: '#7e0023' }
+      ],
+      so2: [
+        { max: 35, color: '#00e400' },
+        { max: 75, color: '#ffff00' },
+        { max: 185, color: '#ff7e00' },
+        { max: 304, color: '#ff0000' },
+        { max: 604, color: '#8f3f97' },
+        { max: 10000, color: '#7e0023' }
+      ]
+    }
+    
+    const rangeList = ranges[pollutantType as keyof typeof ranges] || ranges.pm25
+    
+    for (const range of rangeList) {
+      if (value <= range.max) {
+        return range.color
+      }
+    }
+    
+    return '#7e0023' // Color por defecto para valores extremadamente altos
+  }
+
+  // Efecto para actualizar marcadores cuando cambian los datos
+  useEffect(() => {
+    if (isMapInitialized && mapRef.current && airQualityData && airQualityData.length > 0) {
+      updateDataLayer(currentDataLayer)
+    }
+  }, [airQualityData, isMapInitialized])
 
   if (loading) {
     return (
@@ -347,6 +490,83 @@ export default function FullInteractiveMap() {
         </div>
       </div>
 
+      {/* Data Layer Controls */}
+      <div className="absolute bottom-16 right-4 z-[1000] bg-white rounded-lg shadow-lg p-2">
+        <div className="mb-2 px-2 text-xs font-medium text-gray-600">Data Layers</div>
+        <div className="flex flex-col space-y-1">
+          <button
+            onClick={() => updateDataLayer('aqi')}
+            className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
+              currentDataLayer === 'aqi'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            AQI
+          </button>
+          <button
+            onClick={() => updateDataLayer('pm25')}
+            className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
+              currentDataLayer === 'pm25'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            PM2.5
+          </button>
+          <button
+            onClick={() => updateDataLayer('pm10')}
+            className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
+              currentDataLayer === 'pm10'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            PM10
+          </button>
+          <button
+            onClick={() => updateDataLayer('o3')}
+            className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
+              currentDataLayer === 'o3'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            Ozono
+          </button>
+          <button
+            onClick={() => updateDataLayer('no2')}
+            className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
+              currentDataLayer === 'no2'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            NO₂
+          </button>
+          <button
+            onClick={() => updateDataLayer('co')}
+            className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
+              currentDataLayer === 'co'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            CO
+          </button>
+          <button
+            onClick={() => updateDataLayer('so2')}
+            className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
+              currentDataLayer === 'so2'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            SO₂
+          </button>
+        </div>
+      </div>
+
       {/* Map Controls */}
       <div className="absolute top-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-2">
         <div className="flex flex-col space-y-1">
@@ -380,6 +600,45 @@ export default function FullInteractiveMap() {
           >
             Terrain
           </button>
+        </div>
+      </div>
+
+      {/* Legend for current data layer */}
+      <div className="absolute bottom-16 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 max-w-xs transition-all duration-300">
+        <div className="text-xs font-medium text-gray-700 mb-2">
+          {currentDataLayer === 'aqi' ? 'Air Quality Index Legend' : 
+           currentDataLayer === 'pm25' ? 'PM2.5 Legend (μg/m³)' :
+           currentDataLayer === 'pm10' ? 'PM10 Legend (μg/m³)' :
+           currentDataLayer === 'o3' ? 'Ozono Legend (ppb)' :
+           currentDataLayer === 'no2' ? 'NO₂ Legend (ppb)' :
+           currentDataLayer === 'co' ? 'CO Legend (ppm)' :
+           currentDataLayer === 'so2' ? 'SO₂ Legend (ppb)' : 'Legend'}
+        </div>
+        <div className="space-y-1 text-xs">
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 rounded-full bg-[#00e400]"></div>
+            <span className="text-gray-600">Good</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 rounded-full bg-[#ffff00]"></div>
+            <span className="text-gray-600">Moderate</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 rounded-full bg-[#ff7e00]"></div>
+            <span className="text-gray-600">Unhealthy for Sensitive Groups</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 rounded-full bg-[#ff0000]"></div>
+            <span className="text-gray-600">Unhealthy</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 rounded-full bg-[#8f3f97]"></div>
+            <span className="text-gray-600">Very Unhealthy</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 rounded-full bg-[#7e0023]"></div>
+            <span className="text-gray-600">Hazardous</span>
+          </div>
         </div>
       </div>
     </div>

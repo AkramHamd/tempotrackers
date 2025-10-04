@@ -2,7 +2,8 @@
 'use client'
 
 import { MapContainer as LeafletMapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
-import { Icon } from 'leaflet'
+import { Icon, TileLayer as LeafletTileLayer } from 'leaflet'
+import * as L from 'leaflet'
 import { useEffect, useState } from 'react'
 import 'leaflet/dist/leaflet.css'
 
@@ -164,7 +165,7 @@ const InteractiveMap = () => {
               </p>
               <div className="mt-3 pt-2 border-t border-gray-200">
                 <p className="text-xs text-gray-500">
-                  <strong>Current AQI:</strong> 45 (Good)<br/>
+                  <strong>Current Air Quality:</strong> 45 (Good)<br/>
                   <strong>PM2.5:</strong> 12 μg/m³<br/>
                   <strong>Last Updated:</strong> {new Date().toLocaleTimeString()}
                 </p>
@@ -193,11 +194,11 @@ const InteractiveMap = () => {
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 rounded-full bg-green-500"></div>
-            <span className="text-xs text-gray-600">Good Air Quality (AQI 0-50)</span>
+            <span className="text-xs text-gray-600">Good Air Quality (0-50)</span>
           </div>
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-            <span className="text-xs text-gray-600">Moderate Air Quality (AQI 51-100)</span>
+            <span className="text-xs text-gray-600">Moderate Air Quality (51-100)</span>
           </div>
         </div>
       </div>
