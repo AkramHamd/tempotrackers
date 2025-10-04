@@ -138,7 +138,7 @@ function AirQualityOverlay() {
 }
 
 // Main Interactive Map Component
-export const InteractiveMap = () => {
+const InteractiveMap = () => {
   return (
     <div className="relative h-screen w-full">
       <LeafletMapContainer
@@ -204,3 +204,5 @@ export const InteractiveMap = () => {
     </div>
   )
 }
+
+export default InteractiveMap
