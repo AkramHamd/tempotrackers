@@ -39,8 +39,15 @@ export default function FullInteractiveMap() {
       })
 
       // Create map
-      const mapInstance = L.map('map-container').setView(NASA_HQ_COORDS, 13)
+      const mapInstance = L.map('map-container', {
+        zoomControl: false // Disable default zoom control
+      }).setView(NASA_HQ_COORDS, 13)
       setMap(mapInstance)
+      
+      // Add custom zoom control positioned away from control panel
+      const zoomControl = L.control.zoom({
+        position: 'bottomright' // Position in bottom-right corner
+      }).addTo(mapInstance)
       
       // Store map instance globally for resize access
       ;(window as any).mapInstance = mapInstance
