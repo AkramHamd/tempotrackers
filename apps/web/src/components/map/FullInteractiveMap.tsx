@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { useAirQualityData, useAQIColor } from '../../lib/hooks/useData'
 import ControlPanel from '../control/ControlPanel'
 import CitySearch from './CitySearch'
+import ChatWidget from '../chat/ChatWidget'
 
 // NASA Headquarters coordinates (Washington D.C.)
 const NASA_HQ_COORDS = [38.8833, -77.0167] as [number, number]
@@ -18,6 +19,7 @@ export default function FullInteractiveMap() {
   const { data: airQualityData, loading, error } = useAirQualityData()
   const getAQIColor = useAQIColor()
   const [isMapInitialized, setIsMapInitialized] = useState(false)
+  const [isChatOpen, setIsChatOpen] = useState(false)  // Nuevo estado para el chat
 
   // Método para cambiar la capa de fondo del mapa
   const switchLayer = async (layerKey: string) => {
@@ -576,44 +578,84 @@ export default function FullInteractiveMap() {
         </div>
       </div>
 
-      {/* Legend for current data layer */}
-      <div className="absolute bottom-16 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 max-w-xs transition-all duration-300">
-        <div className="text-xs font-medium text-gray-700 mb-2">
-          {currentDataLayer === 'aqi' ? 'Air Quality Index Legend' : 
-           currentDataLayer === 'pm25' ? 'PM2.5 Legend (μg/m³)' :
-           currentDataLayer === 'pm10' ? 'PM10 Legend (μg/m³)' :
-           currentDataLayer === 'o3' ? 'Ozone Legend (ppb)' :
-           currentDataLayer === 'no2' ? 'NO₂ Legend (ppb)' :
-           currentDataLayer === 'co' ? 'CO Legend (ppm)' :
-           currentDataLayer === 'so2' ? 'SO₂ Legend (ppb)' : 'Legend'}
-        </div>
-        <div className="space-y-1 text-xs">
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-[#00e400]"></div>
-            <span className="text-gray-600">Good</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-[#ffff00]"></div>
-            <span className="text-gray-600">Moderate</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-[#ff7e00]"></div>
-            <span className="text-gray-600">Unhealthy for Sensitive Groups</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-[#ff0000]"></div>
-            <span className="text-gray-600">Unhealthy</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-[#8f3f97]"></div>
-            <span className="text-gray-600">Very Unhealthy</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <div className="w-3 h-3 rounded-full bg-[#7e0023]"></div>
-            <span className="text-gray-600">Hazardous</span>
-          </div>
-        </div>
+      {/* Chat Button */}
+      <div className="absolute top-36 right-4 z-[1000]">
+        <button
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          className="bg-blue-600 hover:bg-blue-700 text-white p-3 rounded-full shadow-lg transition-colors flex items-center justify-center w-10 h-10"
+          title="Abrir chat de asistencia"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          </svg>
+        </button>
       </div>
+
+      {/* Legend for current data layer */}
+      {!isControlPanelOpen && (
+        <div className="absolute bottom-16 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 max-w-xs transition-all duration-300">
+          <div className="text-xs font-medium text-gray-700 mb-2">
+            {currentDataLayer === 'aqi' ? 'Air Quality Index Legend' : 
+            currentDataLayer === 'pm25' ? 'PM2.5 Legend (μg/m³)' :
+            currentDataLayer === 'pm10' ? 'PM10 Legend (μg/m³)' :
+            currentDataLayer === 'o3' ? 'Ozone Legend (ppb)' :
+            currentDataLayer === 'no2' ? 'NO₂ Legend (ppb)' :
+            currentDataLayer === 'co' ? 'CO Legend (ppm)' :
+            currentDataLayer === 'so2' ? 'SO₂ Legend (ppb)' : 'Legend'}
+          </div>
+          <div className="space-y-1 text-xs">
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 rounded-full bg-[#00e400]"></div>
+              <span className="text-gray-600">Good</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 rounded-full bg-[#ffff00]"></div>
+              <span className="text-gray-600">Moderate</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 rounded-full bg-[#ff7e00]"></div>
+              <span className="text-gray-600">Unhealthy for Sensitive Groups</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 rounded-full bg-[#ff0000]"></div>
+              <span className="text-gray-600">Unhealthy</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 rounded-full bg-[#8f3f97]"></div>
+              <span className="text-gray-600">Very Unhealthy</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <div className="w-3 h-3 rounded-full bg-[#7e0023]"></div>
+              <span className="text-gray-600">Hazardous</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Chat Widget */}
+      {isChatOpen && (
+        <div className="fixed top-0 right-0 bottom-0 z-[2000] max-w-md w-full">
+          <ChatWidget 
+            isOpen={true} 
+            onToggle={() => setIsChatOpen(false)} 
+            showFloatingButton={false} 
+            currentAQI={airQualityData?.length 
+              ? Math.round(airQualityData.reduce((sum, data) => sum + data.aqi, 0) / airQualityData.length)
+              : 0}
+            airQualityData={airQualityData?.map(data => ({
+              aqi: data.aqi,
+              location: `${data.latitude.toFixed(2)}, ${data.longitude.toFixed(2)}`,
+              timestamp: data.timestamp,
+              pollutants: {
+                pm25: data.pollutants.pm25,
+                pm10: data.pollutants.pm10,
+                o3: data.pollutants.o3,
+                no2: data.pollutants.no2
+              }
+            }))}
+          />
+        </div>
+      )}
     </div>
   )
 }
