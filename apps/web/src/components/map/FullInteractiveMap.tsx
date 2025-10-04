@@ -8,8 +8,8 @@ import { useSO2Predictions } from '../../lib/hooks/useSO2Predictions'
 import ControlPanel from '../control/ControlPanel'
 import CitySearch from './CitySearch'
 
-// NASA Headquarters coordinates (Washington D.C.)
-const NASA_HQ_COORDS = [38.8833, -77.0167] as [number, number]
+// Center coordinates for Washington D.C. area
+const DC_AREA_COORDS = [38.9072, -77.0369] as [number, number]
 
 export default function FullInteractiveMap() {
   const mapRef = useRef<any>(null)
@@ -22,8 +22,8 @@ export default function FullInteractiveMap() {
     error: so2Error,
     getSO2Color 
   } = useSO2Predictions({
-    latitude: NASA_HQ_COORDS[0],
-    longitude: NASA_HQ_COORDS[1]
+    latitude: DC_AREA_COORDS[0],
+    longitude: DC_AREA_COORDS[1]
   })
   const getAQIColor = useAQIColor()
   const [isMapInitialized, setIsMapInitialized] = useState(false)
@@ -52,19 +52,11 @@ export default function FullInteractiveMap() {
         const L = (await import('leaflet')).default
         require('leaflet/dist/leaflet.css')
 
-        // Fix default marker icons
-        delete (L.Icon.Default.prototype as any)._getIconUrl
-        L.Icon.Default.mergeOptions({
-          iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-          shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-        })
-
         const instance = L.map('map-container', {
           zoomControl: false,
           minZoom: 11, // Prevent zooming out too far
           maxZoom: 18
-        }).setView(NASA_HQ_COORDS, 15) // Zoom in closer
+        }).setView(DC_AREA_COORDS, 13) // Show wider area
 
         // Wait for map to be ready
         instance.whenReady(() => {
@@ -107,29 +99,9 @@ export default function FullInteractiveMap() {
           iconAnchor: [16, 16]
         })
 
-        const nasaMarker = L.marker(NASA_HQ_COORDS, { icon: nasaIcon }).addTo(instance)
+        // No NASA marker needed
         
-        // Get NASA HQ data if available
-        const nasaData = airQualityData?.find(data => data.id === 'nasa-hq')
-        
-        nasaMarker.bindPopup(`
-          <div style="padding: 8px;">
-            <h3 style="font-weight: bold; color: #1e40af; margin: 0 0 4px 0;">NASA Headquarters</h3>
-            <p style="font-size: 12px; color: #666; margin: 0 0 8px 0;">Washington D.C.</p>
-            <p style="font-size: 12px; color: #333; margin: 0 0 8px 0;">
-              The headquarters of the National Aeronautics and Space Administration, 
-              where the TEMPO mission is managed and coordinated.
-            </p>
-            <div style="border-top: 1px solid #eee; padding-top: 8px;">
-              <p style="font-size: 11px; color: #666; margin: 0;">
-                <strong>Current AQI:</strong> ${nasaData ? `${nasaData.aqi} (${nasaData.quality})` : 'Loading...'}<br/>
-                <strong>PM2.5:</strong> ${nasaData ? `${nasaData.pollutants.pm25} μg/m³` : 'Loading...'}<br/>
-                <strong>Source:</strong> ${nasaData ? nasaData.source : 'Loading...'}<br/>
-                <strong>Last Updated:</strong> ${nasaData ? nasaData.timestamp.toLocaleTimeString() : 'Loading...'}
-              </p>
-            </div>
-          </div>
-        `)
+        // No NASA data needed
 
         // Add SO2 prediction markers
         if (showSO2Layer && so2Data && so2Data.predictions.length > 0) {
@@ -253,57 +225,12 @@ export default function FullInteractiveMap() {
         }
       });
 
-      // Add NASA HQ marker
-      const nasaIcon = L.divIcon({
-        html: `
-          <div style="
-            width: 32px; 
-            height: 32px; 
-            background: #1e40af; 
-            border-radius: 50%; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            color: white; 
-            font-weight: bold; 
-            font-size: 12px;
-            border: 2px solid white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-          ">NASA</div>
-        `,
-        className: 'custom-div-icon',
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
-      });
-
-      const nasaMarker = L.marker(NASA_HQ_COORDS, { icon: nasaIcon }).addTo(map);
-      
-      // Get NASA HQ data if available
-      const nasaData = airQualityData?.find(data => data.id === 'nasa-hq');
-      
-      nasaMarker.bindPopup(`
-        <div style="padding: 8px;">
-          <h3 style="font-weight: bold; color: #1e40af; margin: 0 0 4px 0;">NASA Headquarters</h3>
-          <p style="font-size: 12px; color: #666; margin: 0 0 8px 0;">Washington D.C.</p>
-          <p style="font-size: 12px; color: #333; margin: 0 0 8px 0;">
-            The headquarters of the National Aeronautics and Space Administration, 
-            where the TEMPO mission is managed and coordinated.
-          </p>
-          <div style="border-top: 1px solid #eee; padding-top: 8px;">
-            <p style="font-size: 11px; color: #666; margin: 0;">
-              <strong>Current AQI:</strong> ${nasaData ? `${nasaData.aqi} (${nasaData.quality})` : 'Loading...'}<br/>
-              <strong>PM2.5:</strong> ${nasaData ? `${nasaData.pollutants.pm25} μg/m³` : 'Loading...'}<br/>
-              <strong>Source:</strong> ${nasaData ? nasaData.source : 'Loading...'}<br/>
-              <strong>Last Updated:</strong> ${nasaData ? nasaData.timestamp.toLocaleTimeString() : 'Loading...'}
-            </p>
-          </div>
-        </div>
-      `);
+      // No NASA HQ marker needed
 
       // Add air quality markers
       if (airQualityData?.length > 0) {
         airQualityData.forEach((data) => {
-          if (data.id === 'nasa-hq') return;
+          // Show all air quality markers
           
           const aqiIcon = L.divIcon({
             html: `
@@ -345,7 +272,7 @@ export default function FullInteractiveMap() {
       // Add SO2 prediction markers
       if (so2Data && so2Data.predictions.length > 0) {
         // Add coverage area
-        L.circle(NASA_HQ_COORDS, {
+        L.circle(DC_AREA_COORDS, {
           radius: 5000, // 5km radius
           color: 'gray',
           fillColor: 'gray',
@@ -543,7 +470,7 @@ export default function FullInteractiveMap() {
             <h3 className="font-semibold text-gray-900 text-sm">TempoTrackers</h3>
           </div>
           <p className="text-xs text-gray-600">
-            Interactive air quality monitoring around NASA Headquarters
+            Interactive air quality monitoring in Washington D.C. area
           </p>
           <div className="mt-2 text-xs text-gray-500">
             <div>Stations: {airQualityData?.length || 0}</div>
