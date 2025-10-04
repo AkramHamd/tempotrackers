@@ -4,6 +4,7 @@
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useAirQualityData, useAQIColor } from '../../lib/hooks/useData'
+import { useSO2Predictions } from '../../lib/hooks/useSO2Predictions'
 import ControlPanel from '../control/ControlPanel'
 import CitySearch from './CitySearch'
 
@@ -14,9 +15,19 @@ export default function FullInteractiveMap() {
   const mapRef = useRef<any>(null)
   const [currentLayer, setCurrentLayer] = useState('satellite')
   const [isControlPanelOpen, setIsControlPanelOpen] = useState(false)
-  const { data: airQualityData, loading, error } = useAirQualityData()
+  const { data: airQualityData, loading: aqiLoading, error: aqiError } = useAirQualityData()
+  const { 
+    data: so2Data, 
+    loading: so2Loading, 
+    error: so2Error,
+    getSO2Color 
+  } = useSO2Predictions({
+    latitude: NASA_HQ_COORDS[0],
+    longitude: NASA_HQ_COORDS[1]
+  })
   const getAQIColor = useAQIColor()
   const [isMapInitialized, setIsMapInitialized] = useState(false)
+  const [showSO2Layer, setShowSO2Layer] = useState(false)
 
   // Initialize map only once when component mounts
   useEffect(() => {
@@ -112,6 +123,43 @@ export default function FullInteractiveMap() {
           </div>
         `)
 
+        // Add SO2 prediction markers
+        if (showSO2Layer && so2Data && so2Data.predictions.length > 0) {
+          so2Data.predictions.forEach((point) => {
+            const so2Icon = L.divIcon({
+              html: `
+                <div style="
+                  width: 20px; 
+                  height: 20px; 
+                  background: ${getSO2Color(point.prediction)}; 
+                  border-radius: 50%; 
+                  display: flex; 
+                  align-items: center; 
+                  justify-content: center; 
+                  color: white; 
+                  font-weight: bold; 
+                  font-size: 8px;
+                  border: 2px solid white;
+                  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+                ">${Math.round(point.prediction)}</div>
+              `,
+              className: 'custom-div-icon',
+              iconSize: [20, 20],
+              iconAnchor: [10, 10]
+            });
+
+            const so2Marker = L.marker([point.latitude, point.longitude], { icon: so2Icon }).addTo(instance);
+            so2Marker.bindPopup(`
+              <div style="padding: 8px;">
+                <h3 style="font-weight: bold; color: #333; margin: 0 0 4px 0;">SO₂ Prediction</h3>
+                <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Value: <strong>${point.prediction.toFixed(2)} ppb</strong></p>
+                <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Location: <strong>(${point.latitude.toFixed(4)}, ${point.longitude.toFixed(4)})</strong></p>
+                <p style="font-size: 11px; color: #999; margin: 0;">Date: ${so2Data.centerPoint.date}</p>
+              </div>
+            `);
+          });
+        }
+
         // Add air quality markers from real data
         if (airQualityData && airQualityData.length > 0) {
           airQualityData.forEach((data) => {
@@ -171,7 +219,7 @@ export default function FullInteractiveMap() {
         setIsMapInitialized(false)
       }
     }
-  }, [airQualityData, getAQIColor])
+  }, [airQualityData, getAQIColor, so2Data, getSO2Color, showSO2Layer])
 
   // Handle map resize when control panel opens/closes
   useEffect(() => {
@@ -242,6 +290,9 @@ export default function FullInteractiveMap() {
       console.error('Error al centrar el mapa:', error);
     }
   };
+
+  const loading = aqiLoading || so2Loading;
+  const error = aqiError || so2Error;
 
   if (loading) {
     return (
@@ -350,36 +401,57 @@ export default function FullInteractiveMap() {
       {/* Map Controls */}
       <div className="absolute top-4 right-4 z-[1000] bg-white rounded-lg shadow-lg p-2">
         <div className="flex flex-col space-y-1">
-          <button
-            onClick={() => switchLayer('satellite')}
-            className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
-              currentLayer === 'satellite'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            Satellite
-          </button>
-          <button
-            onClick={() => switchLayer('street')}
-            className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
-              currentLayer === 'street'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            Street
-          </button>
-          <button
-            onClick={() => switchLayer('terrain')}
-            className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
-              currentLayer === 'terrain'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-700 hover:bg-gray-100'
-            }`}
-          >
-            Terrain
-          </button>
+          <div className="px-3 py-2 border-b border-gray-200">
+            <h4 className="text-sm font-semibold text-gray-700 mb-2">Map Type</h4>
+            <div className="flex flex-col space-y-1">
+              <button
+                onClick={() => switchLayer('satellite')}
+                className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
+                  currentLayer === 'satellite'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                Satellite
+              </button>
+              <button
+                onClick={() => switchLayer('street')}
+                className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
+                  currentLayer === 'street'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                Street
+              </button>
+              <button
+                onClick={() => switchLayer('terrain')}
+                className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
+                  currentLayer === 'terrain'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                Terrain
+              </button>
+            </div>
+          </div>
+          
+          <div className="px-3 py-2">
+            <h4 className="text-sm font-semibold text-gray-700 mb-2">Data Layers</h4>
+            <div className="flex flex-col space-y-1">
+              <button
+                onClick={() => setShowSO2Layer(!showSO2Layer)}
+                className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
+                  showSO2Layer
+                    ? 'bg-purple-600 text-white'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                SO₂ Predictions
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
