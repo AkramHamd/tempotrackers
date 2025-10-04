@@ -14,7 +14,6 @@ export default function FullInteractiveMap() {
   const [map, setMap] = useState<any>(null)
   const [currentLayer, setCurrentLayer] = useState('satellite')
   const [isControlPanelOpen, setIsControlPanelOpen] = useState(false)
-  const [mapKey, setMapKey] = useState(0)
   const { data: airQualityData, loading, error } = useAirQualityData()
   const getAQIColor = useAQIColor()
 
@@ -22,64 +21,23 @@ export default function FullInteractiveMap() {
     setIsClient(true)
   }, [])
 
-  // NUCLEAR OPTION: Force map recreation when panel opens
-  useEffect(() => {
-    if (!isClient) return
-
-    // Force map recreation by changing key
-    setTimeout(() => {
-      setMapKey(prev => prev + 1)
-    }, 100)
-  }, [isControlPanelOpen, isClient])
-
-  // Handle map resize when control panel opens/closes - AGGRESSIVE APPROACH
+  // Simple map resize handling
   useEffect(() => {
     if (!isClient || !map) return
 
     const mapInstance = (window as any).mapInstance
     if (!mapInstance) return
 
-    // Multiple refresh attempts with increasing delays
-    const refreshAttempts = [100, 300, 500, 1000]
-    
-    refreshAttempts.forEach((delay, index) => {
-      setTimeout(() => {
-        try {
-          // Force complete map refresh
-          mapInstance.invalidateSize()
-          
-          // Force tile reload by changing zoom slightly
-          const currentZoom = mapInstance.getZoom()
-          mapInstance.setZoom(currentZoom + 0.001)
-          
-          setTimeout(() => {
-            mapInstance.setZoom(currentZoom)
-            mapInstance.invalidateSize()
-          }, 50)
-          
-          // Force view refresh
-          setTimeout(() => {
-            const center = mapInstance.getCenter()
-            const zoom = mapInstance.getZoom()
-            mapInstance.setView(center, zoom, { animate: false })
-            mapInstance.invalidateSize()
-          }, 100)
-          
-          // Last attempt - force complete redraw
-          if (index === refreshAttempts.length - 1) {
-            setTimeout(() => {
-              mapInstance.invalidateSize()
-              // Force all layers to redraw
-              mapInstance.eachLayer((layer: any) => {
-                if (layer.redraw) layer.redraw()
-              })
-            }, 200)
-          }
-        } catch (error) {
-          console.warn(`Map refresh attempt ${index + 1} failed:`, error)
-        }
-      }, delay)
-    })
+    // Simple delay and refresh
+    const timer = setTimeout(() => {
+      try {
+        mapInstance.invalidateSize()
+      } catch (error) {
+        console.warn('Map resize error:', error)
+      }
+    }, 500)
+
+    return () => clearTimeout(timer)
   }, [isControlPanelOpen, isClient, map])
 
   // Add ResizeObserver to handle container size changes
@@ -317,7 +275,6 @@ export default function FullInteractiveMap() {
       
       {/* Leaflet Map Container */}
       <div 
-        key={`map-container-${mapKey}`}
         id="map-container" 
         className={`h-full transition-all duration-300 ${
           isControlPanelOpen ? 'ml-80' : 'ml-0'
