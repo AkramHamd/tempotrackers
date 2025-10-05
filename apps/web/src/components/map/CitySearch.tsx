@@ -2,6 +2,13 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import DatePicker from 'react-datepicker'
+import "react-datepicker/dist/react-datepicker.css"
+// Removing Spanish locale setup
+// import { setupDatePickerLocale } from '../../lib/datepicker-locale'
+
+// No longer needed for English UI
+// setupDatePickerLocale()
 
 interface CitySearchProps {
   onSearch: (coords: { lat: number; lng: number }, locationName: string) => void;
@@ -25,6 +32,7 @@ const CitySearch: React.FC<CitySearchProps> = ({
   const [isLoading, setIsLoading] = useState(false)
   const [showResults, setShowResults] = useState(false)
   const [selectedLocation, setSelectedLocation] = useState<{coords: { lat: number; lng: number }, name: string} | null>(null)
+  const [date, setDate] = useState<Date>(selectedDate ? new Date(selectedDate) : new Date())
   const searchRef = useRef<HTMLDivElement>(null)
 
   // Handle search input changes
@@ -69,6 +77,16 @@ const CitySearch: React.FC<CitySearchProps> = ({
     setSelectedLocation({coords, name: result.display_name})
   }
 
+  // Handle date change
+  const handleDateChange = (newDate: Date | null) => {
+    if (newDate) {
+      setDate(newDate)
+      // Convert to ISO format and pass only the date part (YYYY-MM-DD)
+      const dateString = newDate.toISOString().split('T')[0]
+      onDateChange(dateString)
+    }
+  }
+
   // Handle search execution
   const handleSearchExecution = () => {
     if (selectedLocation) {
@@ -92,21 +110,12 @@ const CitySearch: React.FC<CitySearchProps> = ({
     }
   }, [])
 
-  // Generate today's date and the next 5 days for default dates if none provided
-  const getDefaultDates = () => {
-    const dates: string[] = [];
-    const today = new Date();
-    
-    for (let i = 0; i < 5; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      dates.push(date.toISOString().split('T')[0]);
+  // Set initial date when selectedDate prop changes
+  useEffect(() => {
+    if (selectedDate) {
+      setDate(new Date(selectedDate))
     }
-    
-    return dates;
-  };
-
-  const datesToShow = availableDates.length > 0 ? availableDates : getDefaultDates();
+  }, [selectedDate])
 
   return (
     <div 
@@ -119,11 +128,11 @@ const CitySearch: React.FC<CitySearchProps> = ({
     >
       <div className="p-3">
         <div className="mb-2">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Ubicación</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
           <div className="relative">
             <input
               type="text"
-              placeholder="Buscar ciudad o ubicación..."
+              placeholder="Search city or location..."
               className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600"
               value={query}
               onChange={handleInputChange}
@@ -170,25 +179,20 @@ const CitySearch: React.FC<CitySearchProps> = ({
           )}
         </div>
         
-        {/* Date selector */}
+        {/* Date selector - Reemplazado por DatePicker */}
         <div className="mb-3">
-          <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de predicción</label>
-          <select 
-            value={selectedDate} 
-            onChange={(e) => onDateChange(e.target.value)}
+          <label className="block text-sm font-medium text-gray-700 mb-1">Prediction Date</label>
+          <DatePicker
+            selected={date}
+            onChange={handleDateChange}
+            dateFormat="dd/MM/yyyy"
             className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-600"
-          >
-            {datesToShow.map(date => (
-              <option key={date} value={date}>
-                {new Date(date).toLocaleDateString('es-ES', {
-                  weekday: 'long',
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
-                })}
-              </option>
-            ))}
-          </select>
+            minDate={new Date()} // Optional: allows selection only from today onwards
+            showMonthDropdown
+            showYearDropdown
+            dropdownMode="select"
+            placeholderText="Select a date"
+          />
         </div>
         
         {/* Go button */}
@@ -201,7 +205,7 @@ const CitySearch: React.FC<CitySearchProps> = ({
               : 'bg-blue-400 cursor-not-allowed'
           }`}
         >
-          {isLoading ? 'Buscando...' : 'GO'}
+          {isLoading ? 'Searching...' : 'GO'}
         </button>
       </div>
     </div>

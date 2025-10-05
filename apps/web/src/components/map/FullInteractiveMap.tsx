@@ -7,6 +7,8 @@ import { useAirQualityData, useAQIColor, useApiPredictionData } from '../../lib/
 import ControlPanel from '../control/ControlPanel'
 import CitySearch from './CitySearch'
 import ChatWidget from '../chat/ChatWidget'
+// Importamos el tipo para TypeScript
+import type { HeatMapOptions } from 'leaflet'
 
 // NASA Headquarters coordinates (Washington D.C.)
 const NASA_HQ_COORDS = [38.8833, -77.0167] as [number, number]
@@ -30,6 +32,111 @@ export default function FullInteractiveMap() {
   const [isChatOpen, setIsChatOpen] = useState(false)
   const [showPredictions, setShowPredictions] = useState(true)  // Cambiado a true por defecto
   const [isFirstSearch, setIsFirstSearch] = useState(true)  // Estado para controlar si es la primera búsqueda
+  const [heatmapLayer, setHeatmapLayer] = useState<any>(null)  // Estado para guardar referencia a la capa de heatmap
+  const [showHeatmap, setShowHeatmap] = useState(false)  // Estado para mostrar/ocultar el heatmap
+  
+  // Función para generar datos aleatorios para el heatmap de contaminación alrededor de un punto
+  const generateRandomHeatmapData = (center: [number, number], radius: number, points: number = 500) => {
+    const heatData = [];
+    
+    // Lista de colores de la leyenda para seleccionar aleatoriamente
+    const colors = ['#00e400', '#ffff00', '#ff7e00', '#ff0000', '#8f3f97', '#7e0023'];
+    
+    // Generar puntos aleatorios en un patrón circular alrededor del centro
+    for (let i = 0; i < points; i++) {
+      // Distancia aleatoria desde el centro, con más puntos cerca del centro
+      const distance = Math.pow(Math.random(), 0.5) * radius;
+      
+      // Ángulo aleatorio
+      const angle = Math.random() * Math.PI * 2;
+      
+      // Convertir coordenadas polares a cartesianas
+      const offsetLat = distance * Math.cos(angle) / 111111; // 111111 metros por grado de latitud aprox
+      const offsetLng = distance * Math.sin(angle) / (111111 * Math.cos(center[0] * Math.PI / 180));
+      
+      // Calcular nueva posición
+      const lat = center[0] + offsetLat;
+      const lng = center[1] + offsetLng;
+      
+      // Intensidad aleatoria, más intensa cerca del centro
+      const randomIntensity = Math.max(0, 1 - (distance / radius));
+      const intensity = 0.3 + randomIntensity * 0.7;
+      
+      // Añadir punto al array de datos
+      // El formato es [lat, lng, intensity]
+      heatData.push([lat, lng, intensity]);
+    }
+    
+    return heatData;
+  };
+
+  // Función para crear y actualizar el mapa de calor (heatmap)
+  const createHeatmap = async (center: [number, number]) => {
+    if (!isMapInitialized || !mapRef.current) return;
+    
+    try {
+      // Importar Leaflet y el plugin de heatmap
+      const L = (await import('leaflet')).default;
+      const leafletHeat = await import('leaflet.heat');
+      
+      // Eliminar el heatmap anterior si existe
+      if (heatmapLayer) {
+        mapRef.current.removeLayer(heatmapLayer);
+      }
+      
+      // Generar datos aleatorios para el heatmap
+      // El radio es de aproximadamente 5km (en metros)
+      const heatmapData = generateRandomHeatmapData(center, 5000, 1000);
+      
+      // Crear nueva capa de heatmap
+      const heatmap = (L as any).heatLayer(heatmapData, {
+        radius: 20,
+        blur: 15, 
+        maxZoom: 17,
+        gradient: {
+          0.0: '#00e400', // Bueno (verde)
+          0.2: '#ffff00', // Moderado (amarillo)
+          0.4: '#ff7e00', // Poco saludable para grupos sensibles (naranja)
+          0.6: '#ff0000', // Poco saludable (rojo)
+          0.8: '#8f3f97', // Muy poco saludable (púrpura)
+          1.0: '#7e0023'  // Peligroso (burdeos)
+        }
+      });
+      
+      // Añadir el heatmap al mapa
+      heatmap.addTo(mapRef.current);
+      
+      // Guardar la referencia al heatmap
+      setHeatmapLayer(heatmap);
+      setShowHeatmap(true);
+      
+      console.log("Heatmap generado con éxito");
+    } catch (error) {
+      console.error("Error al crear el heatmap:", error);
+    }
+  };
+
+  // Función para eliminar todos los marcadores (puntos) del mapa
+  const clearAllMarkers = async () => {
+    if (!isMapInitialized || !mapRef.current) return;
+    
+    try {
+      const L = (await import('leaflet')).default;
+      const map = mapRef.current;
+      
+      // Eliminar todos los marcadores excepto el de NASA HQ
+      map.eachLayer((layer: any) => {
+        if (layer instanceof L.Marker && 
+            layer.options.alt !== 'nasa-marker') {
+          map.removeLayer(layer);
+        }
+      });
+      
+      console.log("Marcadores eliminados");
+    } catch (error) {
+      console.error("Error al eliminar marcadores:", error);
+    }
+  };
 
   // Método para cambiar la capa de fondo del mapa
   const switchLayer = async (layerKey: string) => {
@@ -147,7 +254,10 @@ export default function FullInteractiveMap() {
           iconAnchor: [16, 16]
         })
 
-        const nasaMarker = L.marker(NASA_HQ_COORDS, { icon: nasaIcon }).addTo(instance)
+        const nasaMarker = L.marker(NASA_HQ_COORDS, { 
+          icon: nasaIcon, 
+          alt: 'nasa-marker' // Agregar identificador para este marcador
+        }).addTo(instance)
         
         // Get NASA HQ data if available
         const nasaData = airQualityData?.find(data => data.id === 'nasa-hq')
@@ -164,6 +274,14 @@ export default function FullInteractiveMap() {
         `)
 
         setIsMapInitialized(true)
+        
+        // Generar heatmap inicial en las coordenadas de NASA HQ (Washington D.C.) después de que el mapa esté inicializado
+        setTimeout(() => {
+          // No mostrar marcadores de puntos inicialmente
+          clearAllMarkers();
+          // Crear el heatmap
+          createHeatmap(NASA_HQ_COORDS);
+        }, 500);
       } catch (error) {
         console.error('Error initializing map:', error)
       }
@@ -204,6 +322,17 @@ export default function FullInteractiveMap() {
       });
       
       console.log(`Mostrando ubicación: ${locationName}`);
+      
+      // Eliminar todos los marcadores circulares (puntos) del mapa
+      clearAllMarkers();
+      
+      // Generar y mostrar el heatmap para la ubicación buscada
+      createHeatmap([coords.lat, coords.lng]);
+      
+      // Si es la primera búsqueda, actualizar el estado
+      if (isFirstSearch) {
+        setIsFirstSearch(false);
+      }
     } catch (error) {
       console.error('Error al centrar el mapa:', error);
     }
@@ -217,208 +346,10 @@ export default function FullInteractiveMap() {
     const map = mapRef.current
     
     // Eliminar marcadores existentes de calidad del aire
-    map.eachLayer((layer: any) => {
-      if (layer instanceof L.Marker && 
-        (layer.options.alt === 'air-quality-marker' || 
-         layer.options.alt === 'prediction-marker')) {
-        map.removeLayer(layer)
-      }
-    })
+    clearAllMarkers();
     
-    // Determine which dataset to display
-    const dataToShow = showPredictions && layerType !== 'predictions' 
-      ? [] // Don't show regular markers when predictions are active
-      : airQualityData || []
-
-    // Show real-time air quality data if not showing predictions or if showing both
-    if (dataToShow && dataToShow.length > 0) {
-      // Add air quality markers - existing code...
-      dataToShow.forEach((data) => {
-        // Saltamos NASA HQ ya que tiene su propio marcador
-        if (data.id === 'nasa-hq') return
-        
-        let value, color, label, unit
-        
-        switch (layerType) {
-          case 'pm25':
-            value = data.pollutants.pm25
-            color = getPollutantColor('pm25', value)
-            label = 'PM2.5'
-            unit = 'μg/m³'
-            break
-          case 'pm10':
-            value = data.pollutants.pm10
-            color = getPollutantColor('pm10', value)
-            label = 'PM10'
-            unit = 'μg/m³'
-            break
-          case 'o3':
-            value = data.pollutants.o3
-            color = getPollutantColor('o3', value)
-            label = 'O3'
-            unit = 'ppb'
-            break
-          case 'no2':
-            value = data.pollutants.no2
-            color = getPollutantColor('no2', value)
-            label = 'NO2'
-            unit = 'ppb'
-            break
-          case 'co':
-            value = data.pollutants.co
-            color = getPollutantColor('co', value)
-            label = 'CO'
-            unit = 'ppm'
-            break
-          case 'so2':
-            value = data.pollutants.so2
-            color = getPollutantColor('so2', value)
-            label = 'SO2'
-            unit = 'ppb'
-            break
-          case 'aqi':
-          default:
-            value = data.aqi
-            color = getAQIColor(value)
-            label = 'AQI'
-            unit = ''
-            break
-        }
-        
-        const markerIcon = L.divIcon({
-          html: `
-            <div style="
-              width: 24px; 
-              height: 24px; 
-              background: ${color}; 
-              border-radius: 50%; 
-              display: flex; 
-              align-items: center; 
-              justify-content: center; 
-              color: white; 
-              font-weight: bold; 
-              font-size: 8px;
-              border: 2px solid white;
-              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-            ">${Math.round(value)}</div>
-          `,
-          className: 'custom-div-icon',
-          iconSize: [24, 24],
-          iconAnchor: [12, 12]
-        })
-
-        const marker = L.marker([data.latitude, data.longitude], { 
-          icon: markerIcon,
-          alt: 'air-quality-marker'
-        }).addTo(map)
-        
-        marker.bindPopup(`
-          <div style="padding: 8px;">
-            <h3 style="font-weight: bold; color: #333; margin: 0 0 4px 0;">Air Quality Station</h3>
-            <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">${label}: <strong>${value}${unit}</strong></p>
-            <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Source: <strong>${data.source}</strong></p>
-            <p style="font-size: 11px; color: #999; margin: 0;">Updated: ${data.timestamp.toLocaleTimeString()}</p>
-          </div>
-        `)
-      })
-    }
-    
-    // Show prediction data
-    if ((showPredictions && layerType === 'predictions') || 
-        (showPredictions && layerType !== 'predictions')) {
-      
-      if (predictionData && predictionData.length > 0) {
-        // Add prediction markers
-        predictionData.forEach((data) => {
-          let value, color, label, unit
-          
-          // Determine what to display based on layer type
-          switch (layerType === 'predictions' ? 'aqi' : layerType) {
-            case 'pm25':
-              value = data.pollutants.pm25
-              color = getPollutantColor('pm25', value)
-              label = 'PM2.5'
-              unit = 'μg/m³'
-              break
-            case 'pm10':
-              value = data.pollutants.pm10
-              color = getPollutantColor('pm10', value)
-              label = 'PM10'
-              unit = 'μg/m³'
-              break
-            case 'o3':
-              value = data.pollutants.o3
-              color = getPollutantColor('o3', value)
-              label = 'O3'
-              unit = 'ppb'
-              break
-            case 'no2':
-              value = data.pollutants.no2
-              color = getPollutantColor('no2', value)
-              label = 'NO2'
-              unit = 'ppb'
-              break
-            case 'co':
-              value = data.pollutants.co
-              color = getPollutantColor('co', value)
-              label = 'CO'
-              unit = 'ppm'
-              break
-            case 'so2':
-              value = data.pollutants.so2
-              color = getPollutantColor('so2', value)
-              label = 'SO2'
-              unit = 'ppb'
-              break
-            case 'aqi':
-            default:
-              value = data.aqi
-              color = getAQIColor(value)
-              label = 'AQI'
-              unit = ''
-              break
-          }
-          
-          // Create a distinct marker for predictions with star-like shape
-          const markerIcon = L.divIcon({
-            html: `
-              <div style="
-                width: 24px; 
-                height: 24px; 
-                background: ${color}; 
-                border-radius: 50%; 
-                display: flex; 
-                align-items: center; 
-                justify-content: center; 
-                color: white; 
-                font-weight: bold; 
-                font-size: 8px;
-                border: 2px dashed white;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-              ">${Math.round(value)}</div>
-            `,
-            className: 'custom-div-icon',
-            iconSize: [24, 24],
-            iconAnchor: [12, 12]
-          })
-
-          const marker = L.marker([data.latitude, data.longitude], { 
-            icon: markerIcon,
-            alt: 'prediction-marker'
-          }).addTo(map)
-          
-          marker.bindPopup(`
-            <div style="padding: 8px;">
-              <h3 style="font-weight: bold; color: #333; margin: 0 0 4px 0;">Predicted Air Quality</h3>
-              <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">${label}: <strong>${value}${unit}</strong></p>
-              <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Quality: <strong>${data.quality}</strong></p>
-              <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Date: <strong>${new Date(data.timestamp).toLocaleDateString()}</strong></p>
-              <p style="font-size: 11px; color: #999; margin: 0;">Time: ${new Date(data.timestamp).toLocaleTimeString()}</p>
-            </div>
-          `)
-        })
-      }
-    }
+    // No mostrar marcadores de puntos (solo heatmap)
+    // El código que creaba los marcadores ha sido eliminado intencionalmente
     
     // Actualizar el estado de la capa de datos actual
     setCurrentDataLayer(layerType)
@@ -511,7 +442,7 @@ export default function FullInteractiveMap() {
       <div className="h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading TempoTrackers Map...</p>
+          <p className="text-gray-600">Loading TempoTrack Map...</p>
           {loading && <p className="text-sm text-gray-500 mt-2">Fetching air quality data...</p>}
           {predictionLoading && <p className="text-sm text-gray-500 mt-2">Loading prediction data...</p>}
         </div>
@@ -573,7 +504,7 @@ export default function FullInteractiveMap() {
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">T</span>
             </div>
-            <span className="font-semibold">TempoTrackers</span>
+            <span className="font-semibold">TempoTrack</span>
           </Link>
           <div className="h-6 w-px bg-gray-300"></div>
           <Link href="/" className="text-sm text-gray-600 hover:text-blue-600 transition-colors">
@@ -756,7 +687,7 @@ export default function FullInteractiveMap() {
           title="Abrir chat de asistencia"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03 8 9 8s9 3.582 9 8z" />
           </svg>
         </button>
       </div>
@@ -833,16 +764,6 @@ export default function FullInteractiveMap() {
           <div className="flex items-center space-x-2">
             <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
             <span className="text-xs text-gray-600">Loading predictions...</span>
-          </div>
-        </div>
-      )}
-      
-      {/* Prediction data error indicator */}
-      {predictionError && (
-        <div className="absolute bottom-4 left-4 z-[1000] bg-red-50 border border-red-200 rounded-lg p-2 shadow-lg">
-          <div className="flex items-center space-x-2">
-            <span className="text-red-500 text-sm">⚠️</span>
-            <span className="text-xs text-red-600">Error loading predictions: {predictionError}</span>
           </div>
         </div>
       )}

@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 
@@ -50,7 +49,7 @@ export default function ChatWidget({
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: '🛰️ ¡Hola! Soy tu asistente especializado en calidad del aire de TempoTrackers.\n\n✨ Te puedo ayudar con:\n• Interpretación de datos AQI y contaminantes\n• Recomendaciones personalizadas de salud\n• Asesoramiento para grupos vulnerables (niños, embarazadas, asma, EPOC)\n• Actividades seguras según la calidad del aire actual\n\n¿Tienes alguna condición de salud específica o pregunta sobre calidad del aire?',
+      text: '🛰️ ¡Hola! Soy tu asistente especializado en calidad del aire de TempoTrack.\n\n✨ Te puedo ayudar con:\n• Interpretación de datos AQI y contaminantes\n• Recomendaciones personalizadas de salud\n• Asesoramiento para grupos vulnerables (niños, embarazadas, asma, EPOC)\n• Actividades seguras según la calidad del aire actual\n\n¿Tienes alguna condición de salud específica o pregunta sobre calidad del aire?',
       sender: 'ai',
       timestamp: new Date()
     }
@@ -234,7 +233,7 @@ export default function ChatWidget({
             <span className="text-xs sm:text-sm font-bold">AI</span>
           </div>
           <div className="min-w-0">
-            <h3 className="font-semibold text-sm sm:text-base truncate">TempoTrackers AI</h3>
+            <h3 className="font-semibold text-sm sm:text-base truncate">TempoTrack AI</h3>
             <p className="text-[10px] sm:text-xs text-blue-100 hidden sm:block">Asistente de Calidad del Aire</p>
           </div>
         </div>
