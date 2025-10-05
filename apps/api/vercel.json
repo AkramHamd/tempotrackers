@@ -3,11 +3,11 @@
   "builds": [
     {
       "src": "main.py",
-      "use": "@vercel/python@3.1.0",
+      "use": "@vercel/python",
       "config": {
         "maxLambdaSize": "15mb",
         "runtime": "python3.11",
-        "pythonVersion": "3.11"
+        "installCommand": "python -m pip install --upgrade pip && pip install -r requirements.txt"
       }
     }
   ],
@@ -16,9 +16,5 @@
       "src": "/(.*)",
       "dest": "main.py"
     }
-  ],
-  "env": {
-    "PYTHONPATH": "/vercel/path0/apps/api",
-    "PYTHONVERSION": "3.11"
-  }
+  ]
 }
