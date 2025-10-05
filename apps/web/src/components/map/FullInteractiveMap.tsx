@@ -3,23 +3,35 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import { useAirQualityData, useAQIColor } from '../../lib/hooks/useData'
+import { useAirQualityData, useAQIColor, useCsvPredictionData } from '../../lib/hooks/useData'
 import ControlPanel from '../control/ControlPanel'
 import CitySearch from './CitySearch'
 import ChatWidget from '../chat/ChatWidget'
 
 // NASA Headquarters coordinates (Washington D.C.)
 const NASA_HQ_COORDS = [38.8833, -77.0167] as [number, number]
+// Path to prediction CSV file
+const PREDICTION_CSV_PATH = '/data/predictions.csv'
 
 export default function FullInteractiveMap() {
   const mapRef = useRef<any>(null)
   const [currentLayer, setCurrentLayer] = useState('satellite')
-  const [currentDataLayer, setCurrentDataLayer] = useState('aqi')  // Nuevo estado para la capa de datos
+  const [currentDataLayer, setCurrentDataLayer] = useState('aqi')  // Data layer state
   const [isControlPanelOpen, setIsControlPanelOpen] = useState(false)
   const { data: airQualityData, loading, error } = useAirQualityData()
+  const { 
+    data: predictionData, 
+    loading: predictionLoading, 
+    error: predictionError,
+    selectedDate,
+    availableDates,
+    selectDate
+  } = useCsvPredictionData(PREDICTION_CSV_PATH)
   const getAQIColor = useAQIColor()
   const [isMapInitialized, setIsMapInitialized] = useState(false)
-  const [isChatOpen, setIsChatOpen] = useState(false)  // Nuevo estado para el chat
+  const [isChatOpen, setIsChatOpen] = useState(false)
+  const [showPredictions, setShowPredictions] = useState(true)  // Cambiado a true por defecto
+  const [isFirstSearch, setIsFirstSearch] = useState(true)  // Estado para controlar si es la primera búsqueda
 
   // Método para cambiar la capa de fondo del mapa
   const switchLayer = async (layerKey: string) => {
@@ -183,15 +195,17 @@ export default function FullInteractiveMap() {
   }, [isControlPanelOpen, isMapInitialized])
 
   // Función para centrar el mapa en una ubicación buscada
-  const handleCitySelect = (lat: number, lng: number) => {
+  const handleCitySelect = (coords: { lat: number; lng: number }, locationName: string) => {
     if (!isMapInitialized || !mapRef.current) return;
     
     try {
       // Centrar mapa en la ubicación seleccionada con animación
-      mapRef.current.flyTo([lat, lng], 12, {
+      mapRef.current.flyTo([coords.lat, coords.lng], 12, {
         animate: true,
         duration: 1.5
       });
+      
+      console.log(`Mostrando ubicación: ${locationName}`);
     } catch (error) {
       console.error('Error al centrar el mapa:', error);
     }
@@ -206,103 +220,207 @@ export default function FullInteractiveMap() {
     
     // Eliminar marcadores existentes de calidad del aire
     map.eachLayer((layer: any) => {
-      if (layer instanceof L.Marker && layer.options.alt === 'air-quality-marker') {
+      if (layer instanceof L.Marker && 
+        (layer.options.alt === 'air-quality-marker' || 
+         layer.options.alt === 'prediction-marker')) {
         map.removeLayer(layer)
       }
     })
     
-    // No continuar si no hay datos
-    if (!airQualityData || airQualityData.length === 0) return
-    
-    // Añadir nuevos marcadores según la capa seleccionada
-    airQualityData.forEach((data) => {
-      // Saltamos NASA HQ ya que tiene su propio marcador
-      if (data.id === 'nasa-hq') return
-      
-      let value, color, label, unit
-      
-      switch (layerType) {
-        case 'pm25':
-          value = data.pollutants.pm25
-          color = getPollutantColor('pm25', value)
-          label = 'PM2.5'
-          unit = 'μg/m³'
-          break
-        case 'pm10':
-          value = data.pollutants.pm10
-          color = getPollutantColor('pm10', value)
-          label = 'PM10'
-          unit = 'μg/m³'
-          break
-        case 'o3':
-          value = data.pollutants.o3
-          color = getPollutantColor('o3', value)
-          label = 'O3'
-          unit = 'ppb'
-          break
-        case 'no2':
-          value = data.pollutants.no2
-          color = getPollutantColor('no2', value)
-          label = 'NO2'
-          unit = 'ppb'
-          break
-        case 'co':
-          value = data.pollutants.co
-          color = getPollutantColor('co', value)
-          label = 'CO'
-          unit = 'ppm'
-          break
-        case 'so2':
-          value = data.pollutants.so2
-          color = getPollutantColor('so2', value)
-          label = 'SO2'
-          unit = 'ppb'
-          break
-        case 'aqi':
-        default:
-          value = data.aqi
-          color = getAQIColor(value)
-          label = 'AQI'
-          unit = ''
-          break
-      }
-      
-      const markerIcon = L.divIcon({
-        html: `
-          <div style="
-            width: 24px; 
-            height: 24px; 
-            background: ${color}; 
-            border-radius: 50%; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            color: white; 
-            font-weight: bold; 
-            font-size: 8px;
-            border: 2px solid white;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-          ">${Math.round(value)}</div>
-        `,
-        className: 'custom-div-icon',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
-      })
+    // Determine which dataset to display
+    const dataToShow = showPredictions && layerType !== 'predictions' 
+      ? [] // Don't show regular markers when predictions are active
+      : airQualityData || []
 
-      const marker = L.marker([data.latitude, data.longitude], { 
-        icon: markerIcon,
-        alt: 'air-quality-marker'
-      }).addTo(map)
+    // Show real-time air quality data if not showing predictions or if showing both
+    if (dataToShow && dataToShow.length > 0) {
+      // Add air quality markers - existing code...
+      dataToShow.forEach((data) => {
+        // Saltamos NASA HQ ya que tiene su propio marcador
+        if (data.id === 'nasa-hq') return
+        
+        let value, color, label, unit
+        
+        switch (layerType) {
+          case 'pm25':
+            value = data.pollutants.pm25
+            color = getPollutantColor('pm25', value)
+            label = 'PM2.5'
+            unit = 'μg/m³'
+            break
+          case 'pm10':
+            value = data.pollutants.pm10
+            color = getPollutantColor('pm10', value)
+            label = 'PM10'
+            unit = 'μg/m³'
+            break
+          case 'o3':
+            value = data.pollutants.o3
+            color = getPollutantColor('o3', value)
+            label = 'O3'
+            unit = 'ppb'
+            break
+          case 'no2':
+            value = data.pollutants.no2
+            color = getPollutantColor('no2', value)
+            label = 'NO2'
+            unit = 'ppb'
+            break
+          case 'co':
+            value = data.pollutants.co
+            color = getPollutantColor('co', value)
+            label = 'CO'
+            unit = 'ppm'
+            break
+          case 'so2':
+            value = data.pollutants.so2
+            color = getPollutantColor('so2', value)
+            label = 'SO2'
+            unit = 'ppb'
+            break
+          case 'aqi':
+          default:
+            value = data.aqi
+            color = getAQIColor(value)
+            label = 'AQI'
+            unit = ''
+            break
+        }
+        
+        const markerIcon = L.divIcon({
+          html: `
+            <div style="
+              width: 24px; 
+              height: 24px; 
+              background: ${color}; 
+              border-radius: 50%; 
+              display: flex; 
+              align-items: center; 
+              justify-content: center; 
+              color: white; 
+              font-weight: bold; 
+              font-size: 8px;
+              border: 2px solid white;
+              box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            ">${Math.round(value)}</div>
+          `,
+          className: 'custom-div-icon',
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        })
+
+        const marker = L.marker([data.latitude, data.longitude], { 
+          icon: markerIcon,
+          alt: 'air-quality-marker'
+        }).addTo(map)
+        
+        marker.bindPopup(`
+          <div style="padding: 8px;">
+            <h3 style="font-weight: bold; color: #333; margin: 0 0 4px 0;">Air Quality Station</h3>
+            <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">${label}: <strong>${value}${unit}</strong></p>
+            <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Source: <strong>${data.source}</strong></p>
+            <p style="font-size: 11px; color: #999; margin: 0;">Updated: ${data.timestamp.toLocaleTimeString()}</p>
+          </div>
+        `)
+      })
+    }
+    
+    // Show prediction data
+    if ((showPredictions && layerType === 'predictions') || 
+        (showPredictions && layerType !== 'predictions')) {
       
-      marker.bindPopup(`
-        <div style="padding: 8px;">
-          <h3 style="font-weight: bold; color: #333; margin: 0 0 4px 0;">Air Quality Station</h3>
-          <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">${label}: <strong>${value}${unit}</strong></p>
-          <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Source: <strong>${data.source}</strong></p>
-          <p style="font-size: 11px; color: #999; margin: 0;">Updated: ${data.timestamp.toLocaleTimeString()}</p>
-        </div>
-      `)
-    })
+      if (predictionData && predictionData.length > 0) {
+        // Add prediction markers
+        predictionData.forEach((data) => {
+          let value, color, label, unit
+          
+          // Determine what to display based on layer type
+          switch (layerType === 'predictions' ? 'aqi' : layerType) {
+            case 'pm25':
+              value = data.pollutants.pm25
+              color = getPollutantColor('pm25', value)
+              label = 'PM2.5'
+              unit = 'μg/m³'
+              break
+            case 'pm10':
+              value = data.pollutants.pm10
+              color = getPollutantColor('pm10', value)
+              label = 'PM10'
+              unit = 'μg/m³'
+              break
+            case 'o3':
+              value = data.pollutants.o3
+              color = getPollutantColor('o3', value)
+              label = 'O3'
+              unit = 'ppb'
+              break
+            case 'no2':
+              value = data.pollutants.no2
+              color = getPollutantColor('no2', value)
+              label = 'NO2'
+              unit = 'ppb'
+              break
+            case 'co':
+              value = data.pollutants.co
+              color = getPollutantColor('co', value)
+              label = 'CO'
+              unit = 'ppm'
+              break
+            case 'so2':
+              value = data.pollutants.so2
+              color = getPollutantColor('so2', value)
+              label = 'SO2'
+              unit = 'ppb'
+              break
+            case 'aqi':
+            default:
+              value = data.aqi
+              color = getAQIColor(value)
+              label = 'AQI'
+              unit = ''
+              break
+          }
+          
+          // Create a distinct marker for predictions with star-like shape
+          const markerIcon = L.divIcon({
+            html: `
+              <div style="
+                width: 24px; 
+                height: 24px; 
+                background: ${color}; 
+                border-radius: 50%; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                color: white; 
+                font-weight: bold; 
+                font-size: 8px;
+                border: 2px dashed white;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+              ">${Math.round(value)}</div>
+            `,
+            className: 'custom-div-icon',
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          })
+
+          const marker = L.marker([data.latitude, data.longitude], { 
+            icon: markerIcon,
+            alt: 'prediction-marker'
+          }).addTo(map)
+          
+          marker.bindPopup(`
+            <div style="padding: 8px;">
+              <h3 style="font-weight: bold; color: #333; margin: 0 0 4px 0;">Predicted Air Quality</h3>
+              <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">${label}: <strong>${value}${unit}</strong></p>
+              <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Quality: <strong>${data.quality}</strong></p>
+              <p style="font-size: 12px; color: #666; margin: 0 0 2px 0;">Date: <strong>${new Date(data.timestamp).toLocaleDateString()}</strong></p>
+              <p style="font-size: 11px; color: #999; margin: 0;">Time: ${new Date(data.timestamp).toLocaleTimeString()}</p>
+            </div>
+          `)
+        })
+      }
+    }
     
     // Actualizar el estado de la capa de datos actual
     setCurrentDataLayer(layerType)
@@ -375,30 +493,41 @@ export default function FullInteractiveMap() {
 
   // Efecto para actualizar marcadores cuando cambian los datos
   useEffect(() => {
-    if (isMapInitialized && mapRef.current && airQualityData && airQualityData.length > 0) {
+    if (isMapInitialized && mapRef.current && 
+        ((airQualityData && airQualityData.length > 0) || 
+         (predictionData && predictionData.length > 0))) {
       updateDataLayer(currentDataLayer)
     }
-  }, [airQualityData, isMapInitialized])
+  }, [airQualityData, predictionData, isMapInitialized, showPredictions, selectedDate])
 
-  if (loading) {
+  // Efecto para actualizar las predicciones cuando estén disponibles por primera vez
+  useEffect(() => {
+    if (isMapInitialized && predictionData && predictionData.length > 0 && showPredictions) {
+      // Actualizar a capa de predicciones cuando los datos estén disponibles
+      updateDataLayer('predictions')
+    }
+  }, [isMapInitialized, predictionData, showPredictions])
+
+  if (loading && !predictionData.length) {
     return (
       <div className="h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading TempoTrackers Map...</p>
           {loading && <p className="text-sm text-gray-500 mt-2">Fetching air quality data...</p>}
+          {predictionLoading && <p className="text-sm text-gray-500 mt-2">Loading prediction data...</p>}
         </div>
       </div>
     )
   }
 
-  if (error) {
+  if (error && predictionError && !airQualityData.length && !predictionData.length) {
     return (
       <div className="h-screen bg-gray-100 flex items-center justify-center">
         <div className="text-center">
           <div className="text-red-500 text-6xl mb-4">⚠️</div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Map</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-gray-600 mb-4">{error || predictionError}</p>
           <button 
             onClick={() => window.location.reload()} 
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
@@ -418,16 +547,27 @@ export default function FullInteractiveMap() {
         onToggle={() => setIsControlPanelOpen(!isControlPanelOpen)} 
       />
       
-      {/* Leaflet Map Container - Full width, no resize */}
+      {/* Leaflet Map Container */}
       <div 
         id="map-container" 
         className="h-full w-full"
       ></div>
 
       {/* City Search Component */}
-      <CitySearch onCitySelect={handleCitySelect} />
+      <CitySearch 
+        onSearch={handleCitySelect} 
+        availableDates={availableDates}
+        selectedDate={selectedDate}
+        onDateChange={selectDate}
+        isFirstSearch={isFirstSearch}
+        onSearchExecuted={() => {
+          setIsFirstSearch(false);
+          setShowPredictions(true);
+          updateDataLayer('predictions');
+        }}
+      />
 
-      {/* Navigation Header - Hidden when control panel is open */}
+      {/* Navigation Header */}
       {!isControlPanelOpen && (
         <div className="absolute top-4 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3 transition-all duration-300">
         <div className="flex items-center space-x-3">
@@ -465,7 +605,25 @@ export default function FullInteractiveMap() {
         </div>
       </div>
 
-      {/* Data Layer Controls - Movido más arriba */}
+      {/* Date selector for predictions */}
+      {showPredictions && availableDates.length > 0 && (
+        <div className="absolute top-16 left-1/2 transform -translate-x-1/2 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-3">
+          <div className="flex flex-col">
+            <label className="text-xs text-gray-600 mb-1">Prediction Date:</label>
+            <select 
+              value={selectedDate} 
+              onChange={(e) => selectDate(e.target.value)}
+              className="text-sm bg-white border border-gray-300 rounded px-2 py-1"
+            >
+              {availableDates.map((date) => (
+                <option key={date} value={date}>{date}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* Data Layer Controls */}
       <div className="absolute bottom-32 right-4 z-[1000] bg-white rounded-lg shadow-lg p-2">
         <div className="mb-2 px-2 text-xs font-medium text-gray-600">Data Layers</div>
         <div className="flex flex-col space-y-1">
@@ -538,6 +696,20 @@ export default function FullInteractiveMap() {
             }`}
           >
             SO₂
+          </button>
+          <button
+            onClick={() => {
+              setShowPredictions(!showPredictions);
+              if (!showPredictions) updateDataLayer('predictions');
+              else updateDataLayer('aqi');
+            }}
+            className={`px-3 py-2 text-sm font-medium rounded transition-colors ${
+              showPredictions
+                ? 'bg-purple-600 text-white'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            {showPredictions ? 'Hide Predictions' : 'Show Predictions'}
           </button>
         </div>
       </div>
@@ -654,6 +826,26 @@ export default function FullInteractiveMap() {
               }
             }))}
           />
+        </div>
+      )}
+
+      {/* Prediction data loading indicator */}
+      {predictionLoading && (
+        <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 rounded-lg p-2 shadow-lg">
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+            <span className="text-xs text-gray-600">Loading predictions...</span>
+          </div>
+        </div>
+      )}
+      
+      {/* Prediction data error indicator */}
+      {predictionError && (
+        <div className="absolute bottom-4 left-4 z-[1000] bg-red-50 border border-red-200 rounded-lg p-2 shadow-lg">
+          <div className="flex items-center space-x-2">
+            <span className="text-red-500 text-sm">⚠️</span>
+            <span className="text-xs text-red-600">Error loading predictions: {predictionError}</span>
+          </div>
         </div>
       )}
     </div>
