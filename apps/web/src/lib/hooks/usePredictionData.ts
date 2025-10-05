@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { predictionService, PredictionPoint } from '../services/predictionService'
 
 // Re-export PredictionPoint for use in other files
-export { PredictionPoint }
+export type { PredictionPoint }
 
 // Hook para obtener predicciones cercanas a una ubicación
 export function usePredictionData(lat?: number, lng?: number, radius: number = 10) {
