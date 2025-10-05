@@ -228,6 +228,7 @@ const InteractiveMap = () => {
   const [mapZoom, setMapZoom] = useState<number>(13)
   const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
   const [showPredictions, setShowPredictions] = useState<boolean>(true)
+  const [isFirstSearch, setIsFirstSearch] = useState<boolean>(true) // Add state for tracking first search
   
   // Get prediction data using our custom hook
   const { data: predictionData, loading: loadingPredictions, getAllPredictions } = usePredictionData()
@@ -294,7 +295,11 @@ const InteractiveMap = () => {
       </LeafletMapContainer>
 
       {/* City Search Component */}
-      <CitySearch onSearch={handleSearch} />
+      <CitySearch 
+        onSearch={handleSearch} 
+        isFirstSearch={isFirstSearch} 
+        onSearchExecuted={() => setIsFirstSearch(false)} 
+      />
 
       {/* Selected Location Display */}
       {selectedLocation && (

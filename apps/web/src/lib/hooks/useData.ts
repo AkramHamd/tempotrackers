@@ -97,6 +97,111 @@ export function usePredictions(hoursAhead: number = 24) {
   return { data, loading, error, refetch: fetchData }
 }
 
+// NEW HOOK: API-based prediction data for heatmap
+export function useApiPredictionData(centerLat: number, centerLon: number, radius: number = 2, points: number = 50) {
+  const [data, setData] = useState<AirQualityData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0])
+  const [availableDates, setAvailableDates] = useState<string[]>([
+    new Date().toISOString().split('T')[0], // Today
+    new Date(Date.now() + 86400000).toISOString().split('T')[0], // Tomorrow
+    new Date(Date.now() + 2 * 86400000).toISOString().split('T')[0] // Day after tomorrow
+  ])
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      // Call the API endpoint to get heatmap data
+      const response = await fetch('/api/heatmap', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          center_lat: centerLat,
+          center_lon: centerLon,
+          radius_km: radius,
+          points: points
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`);
+      }
+      
+      const responseData = await response.json();
+      
+      // Set the prediction data
+      setData(responseData);
+      
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch API prediction data')
+      // Fallback to mock data if API call fails
+      const mockData = await dataService.getPredictions(24);
+      
+      // Helper functions to replace private methods in dataService
+      const getQualityLevel = (aqi: number): AirQualityData['quality'] => {
+        if (aqi <= 50) return 'Good'
+        if (aqi <= 100) return 'Moderate'
+        if (aqi <= 150) return 'Unhealthy for Sensitive Groups'
+        if (aqi <= 200) return 'Unhealthy'
+        if (aqi <= 300) return 'Very Unhealthy'
+        return 'Hazardous'
+      };
+      
+      const generatePollutants = (aqi: number) => {
+        return {
+          pm25: aqi * 0.3,
+          pm10: aqi * 0.5,
+          o3: aqi * 0.2,
+          no2: aqi * 0.15,
+          co: aqi * 0.1,
+          so2: aqi * 0.25
+        }
+      };
+      
+      // Convert PredictionData to AirQualityData format
+      const airQualityData: AirQualityData[] = mockData.map((pred, index) => ({
+        id: `pred-${index}`,
+        latitude: centerLat + (Math.random() - 0.5) * 0.05,
+        longitude: centerLon + (Math.random() - 0.5) * 0.05,
+        timestamp: pred.timestamp,
+        aqi: pred.predictedAQI,
+        quality: getQualityLevel(pred.predictedAQI),
+        pollutants: generatePollutants(pred.predictedAQI),
+        source: 'Prediction',
+        confidence: pred.confidence
+      }));
+      
+      setData(airQualityData);
+    } finally {
+      setLoading(false)
+    }
+  }, [centerLat, centerLon, radius, points])
+
+  // Change selected date
+  const selectDate = useCallback((date: string) => {
+    setSelectedDate(date)
+  }, [])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
+
+  return { 
+    data, 
+    loading, 
+    error, 
+    refetch: fetchData,
+    selectedDate,
+    availableDates,
+    selectDate
+  }
+}
+
 // Hook for CSV prediction data
 export function useCsvPredictionData(csvFilePath: string = '/data/predictions.csv') {
   const [data, setData] = useState<AirQualityData[]>([])
@@ -122,8 +227,9 @@ export function useCsvPredictionData(csvFilePath: string = '/data/predictions.cs
       const allPredictions = csvDataService.getAllPredictions()
       setOriginalData(allPredictions)
       
-      // Extract unique dates
-      const dates = [...new Set(allPredictions.map(item => item.date))].sort()
+      // Extract unique dates - using Array.from() instead of spread operator
+      const uniqueDates = new Set(allPredictions.map(item => item.date))
+      const dates = Array.from(uniqueDates).sort()
       setAvailableDates(dates)
       
       // Set initial selected date if available

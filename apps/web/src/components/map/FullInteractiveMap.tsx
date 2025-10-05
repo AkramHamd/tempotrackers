@@ -3,15 +3,13 @@
 
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import { useAirQualityData, useAQIColor, useCsvPredictionData } from '../../lib/hooks/useData'
+import { useAirQualityData, useAQIColor, useApiPredictionData } from '../../lib/hooks/useData'
 import ControlPanel from '../control/ControlPanel'
 import CitySearch from './CitySearch'
 import ChatWidget from '../chat/ChatWidget'
 
 // NASA Headquarters coordinates (Washington D.C.)
 const NASA_HQ_COORDS = [38.8833, -77.0167] as [number, number]
-// Path to prediction CSV file
-const PREDICTION_CSV_PATH = '/data/predictions.csv'
 
 export default function FullInteractiveMap() {
   const mapRef = useRef<any>(null)
@@ -26,7 +24,7 @@ export default function FullInteractiveMap() {
     selectedDate,
     availableDates,
     selectDate
-  } = useCsvPredictionData(PREDICTION_CSV_PATH)
+  } = useApiPredictionData(NASA_HQ_COORDS[0], NASA_HQ_COORDS[1], 2, 50)
   const getAQIColor = useAQIColor()
   const [isMapInitialized, setIsMapInitialized] = useState(false)
   const [isChatOpen, setIsChatOpen] = useState(false)
