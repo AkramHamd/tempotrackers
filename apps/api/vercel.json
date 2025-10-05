@@ -3,10 +3,10 @@
   "builds": [
     {
       "src": "main.py",
-      "use": "@vercel/python@3.1.0",
+      "use": "@vercel/python",
       "config": {
-        "runtime": "python3.11",
-        "pip": ["--no-cache-dir"]
+        "buildCommand": "./build_script.sh",
+        "pythonVersion": "3.11"
       }
     }
   ],

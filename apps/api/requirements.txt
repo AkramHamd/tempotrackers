@@ -11,4 +11,4 @@ pandas==2.1.4
 numpy==1.25.2
 python-dotenv==1.0.0
 celery==5.3.4
-werkzeug==2.3.7  # Added for Vercel compatibility
+werkzeug==2.3.7
