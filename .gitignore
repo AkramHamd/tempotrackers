@@ -337,8 +337,11 @@ models/
 # Data files
 data/
 *.csv
-*.json
 *.parquet
+# Keep configuration files
+!vercel.json
+!package.json
+!tsconfig.json
 
 # Temporary files
 tmp/
