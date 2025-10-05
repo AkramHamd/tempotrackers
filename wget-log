@@ -1,0 +1,11 @@
+--2025-10-05 09:42:16--  https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80
+Resolviendo images.unsplash.com (images.unsplash.com)... 151.101.66.208, 151.101.194.208, 151.101.2.208, ...
+Conectando con images.unsplash.com (images.unsplash.com)[151.101.66.208]:443... conectado.
+Petición HTTP enviada, esperando respuesta... 200 OK
+Longitud: 764953 (747K) [image/jpeg]
+Guardando como: ‘/home/antonio/Escritorio/tempotrackers/apps/web/public/images/map-background.jpg’
+
+                   /home/antonio/Escr   0%[                                                                       ]       0  --.-KB/s               /home/antonio/Escritorio/tempotracker 100%[======================================================================>] 747,02K  --.-KB/s    en 0,07s   
+
+2025-10-05 09:42:16 (9,95 MB/s) - ‘/home/antonio/Escritorio/tempotrackers/apps/web/public/images/map-background.jpg’ guardado [764953/764953]
+

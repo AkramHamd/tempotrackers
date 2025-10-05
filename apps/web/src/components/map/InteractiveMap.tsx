@@ -1,11 +1,13 @@
 // Interactive Map Component with Leaflet.js
 'use client'
 
-import { MapContainer as LeafletMapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { MapContainer as LeafletMapContainer, TileLayer, Marker, Popup, useMap, Circle } from 'react-leaflet'
 import { Icon, TileLayer as LeafletTileLayer } from 'leaflet'
 import * as L from 'leaflet'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import 'leaflet/dist/leaflet.css'
+import CitySearch from './CitySearch'
+import { usePredictionData, PredictionPoint } from '../../lib/hooks/usePredictionData'
 
 // NASA Headquarters coordinates (Washington D.C.)
 const NASA_HQ_COORDS = [38.8833, -77.0167] as [number, number]
@@ -22,6 +24,17 @@ const nasaIcon = new Icon({
   iconAnchor: [16, 16],
   popupAnchor: [0, -16]
 })
+
+// Map view updater component
+function MapViewUpdater({ center, zoom }: { center: [number, number], zoom: number }) {
+  const map = useMap()
+  
+  useEffect(() => {
+    map.setView(center, zoom)
+  }, [center, zoom, map])
+  
+  return null
+}
 
 // Map controls component
 function MapControls() {
@@ -83,6 +96,77 @@ function MapControls() {
   )
 }
 
+// Prediction overlay component
+function PredictionOverlay({ predictionData }: { predictionData: PredictionPoint[] }) {
+  const getAQIColor = (aqi: number) => {
+    if (aqi <= 50) return '#00e400'
+    if (aqi <= 100) return '#ffff00'
+    if (aqi <= 150) return '#ff7e00'
+    if (aqi <= 200) return '#ff0000'
+    if (aqi <= 300) return '#8f3f97'
+    return '#7e0023'
+  }
+
+  return (
+    <>
+      {predictionData.map((point, index) => (
+        <Circle
+          key={`pred-${index}`}
+          center={[point.lat, point.lng]}
+          radius={200}
+          pathOptions={{
+            color: getAQIColor(point.aqi),
+            fillColor: getAQIColor(point.aqi),
+            fillOpacity: 0.5
+          }}
+          eventHandlers={{
+            click: () => {
+              // Popup is handled by Marker
+            }
+          }}
+        />
+      ))}
+      
+      {predictionData.map((point, index) => (
+        <Marker
+          key={`marker-${index}`}
+          position={[point.lat, point.lng]}
+          icon={new Icon({
+            iconUrl: `data:image/svg+xml;base64,${btoa(`
+              <svg width="16" height="16" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="8" cy="8" r="6" fill="${getAQIColor(point.aqi)}" stroke="#ffffff" stroke-width="1"/>
+                <text x="8" y="10" text-anchor="middle" fill="white" font-family="Arial" font-size="6" font-weight="bold">${point.aqi}</text>
+              </svg>
+            `)}`,
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+          })}
+        >
+          <Popup>
+            <div className="p-2">
+              <h3 className="font-semibold text-gray-900">Predicción de Calidad del Aire</h3>
+              <p className="text-sm text-gray-600">AQI: <span className="font-semibold">{point.aqi}</span></p>
+              <p className="text-sm text-gray-600">Calidad: <span className="font-semibold">{point.quality}</span></p>
+              <div className="text-sm mt-1 pt-1 border-t border-gray-200">
+                {point.pollutants.pm25 && <p>PM2.5: {point.pollutants.pm25.toFixed(1)} μg/m³</p>}
+                {point.pollutants.pm10 && <p>PM10: {point.pollutants.pm10.toFixed(1)} μg/m³</p>}
+                {point.pollutants.o3 && <p>O3: {point.pollutants.o3.toFixed(1)} ppb</p>}
+                {point.pollutants.no2 && <p>NO2: {point.pollutants.no2.toFixed(1)} ppb</p>}
+                {point.pollutants.co && <p>CO: {point.pollutants.co.toFixed(2)} ppm</p>}
+                {point.pollutants.so2 && <p>SO2: {point.pollutants.so2.toFixed(1)} ppb</p>}
+              </div>
+              <div className="mt-1 pt-1 border-t border-gray-200 text-xs text-gray-500">
+                <p>Confianza: {Math.round((point.confidence || 0) * 100)}%</p>
+                <p>Actualizado: {point.timestamp.toLocaleTimeString()}</p>
+              </div>
+            </div>
+          </Popup>
+        </Marker>
+      ))}
+    </>
+  )
+}
+
 // Air quality data overlay component
 function AirQualityOverlay() {
   const [airQualityData, setAirQualityData] = useState<any[]>([])
@@ -140,11 +224,32 @@ function AirQualityOverlay() {
 
 // Main Interactive Map Component
 const InteractiveMap = () => {
+  const [mapCenter, setMapCenter] = useState<[number, number]>(NASA_HQ_COORDS)
+  const [mapZoom, setMapZoom] = useState<number>(13)
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
+  const [showPredictions, setShowPredictions] = useState<boolean>(true)
+  const [isFirstSearch, setIsFirstSearch] = useState<boolean>(true) // Add state for tracking first search
+  
+  // Get prediction data using our custom hook
+  const { data: predictionData, loading: loadingPredictions, getAllPredictions } = usePredictionData()
+
+  // Load all prediction data when component mounts
+  useEffect(() => {
+    getAllPredictions()
+  }, [getAllPredictions])
+
+  // Handle location search
+  const handleSearch = useCallback((coords: { lat: number; lng: number }, locationName: string) => {
+    setMapCenter([coords.lat, coords.lng])
+    setMapZoom(14)
+    setSelectedLocation(locationName)
+  }, [])
+
   return (
     <div className="relative h-screen w-full">
       <LeafletMapContainer
-        center={NASA_HQ_COORDS}
-        zoom={13}
+        center={mapCenter}
+        zoom={mapZoom}
         className="h-full w-full"
         zoomControl={true}
       >
@@ -152,6 +257,9 @@ const InteractiveMap = () => {
           url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
           attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
         />
+        
+        {/* Update map view when center or zoom changes */}
+        <MapViewUpdater center={mapCenter} zoom={mapZoom} />
         
         {/* NASA Headquarters Marker */}
         <Marker position={NASA_HQ_COORDS} icon={nasaIcon}>
@@ -163,6 +271,13 @@ const InteractiveMap = () => {
                 The headquarters of the National Aeronautics and Space Administration, 
                 where the TEMPO mission is managed and coordinated.
               </p>
+              <div className="mt-3 pt-2 border-t border-gray-200">
+                <p className="text-xs text-gray-500">
+                  <strong>Current Air Quality:</strong> 45 (Good)<br/>
+                  <strong>PM2.5:</strong> 12 μg/m³<br/>
+                  <strong>Last Updated:</strong> {new Date().toLocaleTimeString()}
+                </p>
+              </div>
             </div>
           </Popup>
         </Marker>
@@ -170,12 +285,49 @@ const InteractiveMap = () => {
         {/* Air Quality Data Overlay */}
         <AirQualityOverlay />
         
+        {/* Prediction Data Overlay */}
+        {showPredictions && predictionData.length > 0 && (
+          <PredictionOverlay predictionData={predictionData} />
+        )}
+        
         {/* Map Controls */}
         <MapControls />
       </LeafletMapContainer>
 
+      {/* City Search Component */}
+      <CitySearch 
+        onSearch={handleSearch} 
+        isFirstSearch={isFirstSearch} 
+        onSearchExecuted={() => setIsFirstSearch(false)} 
+      />
+
+      {/* Selected Location Display */}
+      {selectedLocation && (
+        <div className="absolute top-4 left-[22rem] z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-2 max-w-md">
+          <p className="text-sm font-medium">{selectedLocation}</p>
+        </div>
+      )}
+
+      {/* Loading indicator for predictions */}
+      {loadingPredictions && (
+        <div className="absolute bottom-20 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-2 px-4">
+          <div className="flex items-center space-x-2">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+            <span className="text-sm">Cargando predicciones...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Toggle Predictions Button */}
+      <button
+        className="absolute bottom-4 left-4 z-[1000] bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium transition-colors"
+        onClick={() => setShowPredictions(!showPredictions)}
+      >
+        {showPredictions ? 'Ocultar Predicciones' : 'Mostrar Predicciones'}
+      </button>
+
       {/* Map Info Panel */}
-      <div className="absolute bottom-4 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-4 max-w-sm">
+      <div className="absolute bottom-4 right-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-4 max-w-sm">
         <h3 className="font-semibold text-gray-900 mb-2">TempoTrackers Map</h3>
         <div className="space-y-2">
           <div className="flex items-center space-x-2">
@@ -189,6 +341,22 @@ const InteractiveMap = () => {
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
             <span className="text-xs text-gray-600">Moderate Air Quality (51-100)</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+            <span className="text-xs text-gray-600">Unhealthy for Sensitive Groups (101-150)</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+            <span className="text-xs text-gray-600">Unhealthy (151-200)</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 rounded-full bg-purple-500"></div>
+            <span className="text-xs text-gray-600">Very Unhealthy (201-300)</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-3 h-3 rounded-full bg-red-800"></div>
+            <span className="text-xs text-gray-600">Hazardous (301+)</span>
           </div>
         </div>
       </div>
