@@ -144,9 +144,9 @@ function PredictionOverlay({ predictionData }: { predictionData: PredictionPoint
         >
           <Popup>
             <div className="p-2">
-              <h3 className="font-semibold text-gray-900">Predicción de Calidad del Aire</h3>
+              <h3 className="font-semibold text-gray-900">Air Quality Prediction</h3>
               <p className="text-sm text-gray-600">AQI: <span className="font-semibold">{point.aqi}</span></p>
-              <p className="text-sm text-gray-600">Calidad: <span className="font-semibold">{point.quality}</span></p>
+              <p className="text-sm text-gray-600">Quality: <span className="font-semibold">{point.quality}</span></p>
               <div className="text-sm mt-1 pt-1 border-t border-gray-200">
                 {point.pollutants.pm25 && <p>PM2.5: {point.pollutants.pm25.toFixed(1)} μg/m³</p>}
                 {point.pollutants.pm10 && <p>PM10: {point.pollutants.pm10.toFixed(1)} μg/m³</p>}
@@ -156,8 +156,8 @@ function PredictionOverlay({ predictionData }: { predictionData: PredictionPoint
                 {point.pollutants.so2 && <p>SO2: {point.pollutants.so2.toFixed(1)} ppb</p>}
               </div>
               <div className="mt-1 pt-1 border-t border-gray-200 text-xs text-gray-500">
-                <p>Confianza: {Math.round((point.confidence || 0) * 100)}%</p>
-                <p>Actualizado: {point.timestamp.toLocaleTimeString()}</p>
+                <p>Confidence: {Math.round((point.confidence || 0) * 100)}%</p>
+                <p>Updated: {point.timestamp.toLocaleTimeString()}</p>
               </div>
             </div>
           </Popup>
@@ -313,7 +313,7 @@ const InteractiveMap = () => {
         <div className="absolute bottom-20 left-4 z-[1000] bg-white/90 backdrop-blur-sm rounded-lg shadow-lg p-2 px-4">
           <div className="flex items-center space-x-2">
             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-            <span className="text-sm">Cargando predicciones...</span>
+            <span className="text-sm">Loading predictions...</span>
           </div>
         </div>
       )}
@@ -323,7 +323,7 @@ const InteractiveMap = () => {
         className="absolute bottom-4 left-4 z-[1000] bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-lg text-sm font-medium transition-colors"
         onClick={() => setShowPredictions(!showPredictions)}
       >
-        {showPredictions ? 'Ocultar Predicciones' : 'Mostrar Predicciones'}
+        {showPredictions ? 'Hide Predictions' : 'Show Predictions'}
       </button>
 
       {/* Map Info Panel */}

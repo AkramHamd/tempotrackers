@@ -426,28 +426,28 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
                         <span className="text-white text-sm font-bold">AI</span>
                       </div>
                       <div>
-                        <h4 className="font-semibold text-gray-900">TempoTrackers AI</h4>
+                        <h4 className="font-semibold text-gray-900">TempoTrack AI</h4>
                         <p className="text-sm text-gray-600">Powered by Gemini</p>
                       </div>
                     </div>
                     
                     <p className="text-sm text-gray-700 mb-3">
-                      Obtén respuestas instantáneas sobre calidad del aire, datos del satélite TEMPO de la NASA, 
-                      interpretación de métricas ambientales y recomendaciones personalizadas.
+                      Get instant answers about air quality, NASA TEMPO satellite data, 
+                      interpretation of environmental metrics, and personalized recommendations.
                     </p>
                     
                     <div className="grid grid-cols-1 gap-2 text-xs">
                       <div className="flex items-center text-gray-600">
                         <span className="w-2 h-2 bg-green-500 rounded-full mr-2"></span>
-                        Análisis de datos en tiempo real
+                        Real-time data analysis
                       </div>
                       <div className="flex items-center text-gray-600">
                         <span className="w-2 h-2 bg-blue-500 rounded-full mr-2"></span>
-                        Pronósticos de calidad del aire
+                        Air quality forecasts
                       </div>
                       <div className="flex items-center text-gray-600">
                         <span className="w-2 h-2 bg-purple-500 rounded-full mr-2"></span>
-                        Recomendaciones de salud
+                        Health recommendations
                       </div>
                     </div>
                   </div>
@@ -455,14 +455,14 @@ export default function ControlPanel({ isOpen, onToggle }: ControlPanelProps) {
                   <div className="text-center py-4">
                     <div className="text-4xl mb-2">💬</div>
                     <p className="text-sm text-gray-600 mb-3">
-                      Haz clic en "Open Chat" para comenzar una conversación
+                      Click "Open Chat" to start a conversation
                     </p>
                     <div className="bg-gray-50 rounded-lg p-3 text-left">
-                      <p className="text-xs text-gray-500 mb-1 font-medium">Ejemplos de preguntas:</p>
+                      <p className="text-xs text-gray-500 mb-1 font-medium">Example questions:</p>
                       <ul className="text-xs text-gray-600 space-y-1">
-                        <li>• ¿Cuál es la calidad del aire actual?</li>
-                        <li>• ¿Qué significan los datos TEMPO?</li>
-                        <li>• ¿Es seguro hacer ejercicio al aire libre?</li>
+                        <li>• What is the current air quality?</li>
+                        <li>• What do the TEMPO data mean?</li>
+                        <li>• Is it safe to exercise outdoors?</li>
                       </ul>
                     </div>
                   </div>

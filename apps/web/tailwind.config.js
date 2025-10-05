@@ -42,7 +42,41 @@ module.exports = {
           '100%': { transform: 'translateY(0)', opacity: '1' },
         },
       },
+      typography: {
+        DEFAULT: {
+          css: {
+            maxWidth: 'none',
+            color: 'inherit',
+            a: {
+              color: '#3b82f6',
+              '&:hover': {
+                color: '#2563eb',
+              },
+            },
+            strong: {
+              color: 'inherit',
+            },
+            em: {
+              color: 'inherit',
+            },
+            code: {
+              color: 'inherit',
+            },
+            h1: {
+              color: 'inherit',
+            },
+            h2: {
+              color: 'inherit',
+            },
+            h3: {
+              color: 'inherit',
+            },
+          },
+        },
+      },
     },
   },
-  plugins: [],
+  plugins: [
+    require('@tailwindcss/typography'),
+  ],
 }
