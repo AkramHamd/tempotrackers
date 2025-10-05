@@ -2,19 +2,18 @@
 
 ## Project Structure
 
-This is a modular web application for NASA Space Apps Challenge that forecasts air quality by integrating real-time TEMPO data with ground-based measurements and weather data.
+This is a modular web application for NASA Space Apps Challenge. It forecasts air quality by integrating EPA (Environmental Protection Agency) data with ground-based pollution measurements.
 
 ### Architecture Overview
 
-- **Frontend**: Next.js 14 + TypeScript + Tailwind CSS + Leaflet.js
-- **Backend**: FastAPI + Python for ML pipeline
-- **Database**: PostgreSQL + Redis
-- **Cloud**: AWS/Vercel deployment
-- **ML**: scikit-learn/TensorFlow for air quality prediction
+- **Frontend**: Next.js 14 + TypeScript + Tailwind CSS + Leaflet.js 
+- **Backend**: Unicorn FastAPI + Python for ML pipeline
+- **Cloud**: Next steps
+- **ML**: Scikit-Learn/XGBoost for air quality prediction
 
 ### Key Features
 
-- Real-time TEMPO satellite data integration
+- EPA satellite data integration
 - Interactive mapping with Leaflet.js
 - AI-powered air quality forecasting
 - Multi-stakeholder alert system
@@ -24,13 +23,17 @@ This is a modular web application for NASA Space Apps Challenge that forecasts a
 ### Development Phases
 
 1. **Foundation & Setup** - Project structure, basic UI
-2. **Data Pipeline & ML** - TEMPO API, weather data, ML models
+2. **Data Pipeline & ML** - EPA data, ML models
 3. **Core Features** - Mapping, forecasting, alerts
 4. **Advanced Features** - Historical analysis, optimization
+
+### Warning
+.ipynb files are just illustrative but they are not executable. Models have been trained separatedly.
 
 ### Getting Started
 
 #### Prerequisites
+- Python3
 - Node.js 18+ and npm
 - Gemini AI API key (for chat functionality)
 
@@ -74,7 +77,4 @@ npm run build
 
 ### Data Sources
 
-- NASA TEMPO satellite data
-- OpenAQ ground station data
-- Weather APIs (OpenWeatherMap, NOAA)
-- Pandora network data
+- EPA satellite data
