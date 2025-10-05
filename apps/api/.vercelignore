@@ -9,4 +9,3 @@ venv
 *.log
 test_*
 tests/
-*.pkl

@@ -5,9 +5,8 @@ import os
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
 
-# Path to models directory
-BASE_DIR = Path(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-MODELS_DIR = BASE_DIR / "predictmodel" / "models"
+# Path to models directory (local to this package to ensure inclusion in serverless bundles)
+MODELS_DIR = Path(__file__).parent / "models"
 
 # Available pollutant models
 POLLUTANT_MODELS = {
@@ -38,7 +37,7 @@ class PredictionService:
             else:
                 print(f"Model not found: {model_path}")
                 
-        print(f"Loaded {len(self.models)} models")
+        print(f"Loaded {len(self.models)} models from {MODELS_DIR}")
     
     def predict_pollutants(self, features: pd.DataFrame) -> Dict[str, float]:
         """
