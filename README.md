@@ -30,16 +30,47 @@ This is a modular web application for NASA Space Apps Challenge that forecasts a
 
 ### Getting Started
 
-```bash
-# Install dependencies
-npm install
+#### Prerequisites
+- Node.js 18+ and npm
+- Gemini AI API key (for chat functionality)
 
-# Start development servers
+#### Setup Instructions
+
+1. **Clone and install dependencies:**
+```bash
+git clone https://github.com/AkramHamd/tempotrackers.git
+cd tempotrackers
+npm install
+```
+
+2. **Configure environment variables:**
+```bash
+# Copy the environment template
+cp .env.example .env.local
+
+# Edit .env.local with your actual API keys
+# Get Gemini API key from: https://aistudio.google.com/app/apikey
+```
+
+3. **Start development:**
+```bash
+# Start all development servers
 npm run dev
 
-# Build for production
+# Or start specific services
+cd apps/web && npm run dev    # Web app
+cd apps/api && python main.py # API server
+```
+
+4. **Build for production:**
+```bash
 npm run build
 ```
+
+#### Environment Variables
+- `GEMINI_API_KEY`: Required for AI chat functionality
+- `NEXT_PUBLIC_APP_URL`: Application URL (default: http://localhost:3000)
+- Additional variables documented in `.env.example`
 
 ### Data Sources
 
